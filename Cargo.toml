@@ -8,5 +8,7 @@ edition = "2018"
 
 [dependencies]
 diacritics = "0.1.1"
+glob = "0.3.0"
 metaflac = "0.2"
+opus_headers = "0.1.2"
 unidecode = "0.3.0"
