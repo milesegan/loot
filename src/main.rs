@@ -33,15 +33,15 @@ impl Tag {
     fn read_flac(path: &str) -> Option<Tag> {
         let mut tag = metaflac::Tag::read_from_path(&path).ok()?;
         let comments = &tag.vorbis_comments_mut().comments;
-        let artist = &comments.get("ALBUMARTIST")?.get(0)?;
-        let album = &comments.get("ALBUM")?.get(0)?;
-        let track = &comments.get("TITLE")?.get(0)?;
-        let number = &comments.get("TRACKNUMBER")?.get(0)?.parse::<i8>().ok()?;
+        let artist = comments.get("ALBUMARTIST")?.get(0)?;
+        let album = comments.get("ALBUM")?.get(0)?;
+        let track = comments.get("TITLE")?.get(0)?;
+        let number = comments.get("TRACKNUMBER")?.get(0)?.parse::<i8>().ok()?;
 
         return Some(Tag {
-            artist: artist.to_owned().to_owned(),
-            album: album.to_owned().to_owned(),
-            track: track.to_owned().to_owned(),
+            artist: artist.to_owned(),
+            album: album.to_owned(),
+            track: track.to_owned(),
             number: number.to_owned(),
         });
     }
@@ -49,15 +49,15 @@ impl Tag {
     fn read_opus(path: &str) -> Option<Tag> {
         let headers = opus_headers::parse_from_path(path).unwrap();
         let comments = headers.comments.user_comments;
-        let artist = &comments.get("ALBUMARTIST")?;
-        let album = &comments.get("ALBUM")?;
-        let track = &comments.get("TITLE")?;
-        let number = &comments.get("TRACKNUMBER")?.parse::<i8>().ok()?;
+        let artist = comments.get("ALBUMARTIST")?;
+        let album = comments.get("ALBUM")?;
+        let track = comments.get("TITLE")?;
+        let number = comments.get("TRACKNUMBER")?.parse::<i8>().ok()?;
 
         return Some(Tag {
-            artist: artist.to_owned().to_owned(),
-            album: album.to_owned().to_owned(),
-            track: track.to_owned().to_owned(),
+            artist: artist.to_owned(),
+            album: album.to_owned(),
+            track: track.to_owned(),
             number: number.to_owned(),
         });
     }
@@ -77,8 +77,16 @@ fn tidy_string(string: &str) -> String {
     return diacritics::remove_diacritics(string).nfc().collect();
 }
 
-fn process_file(base: &str, path: &str) -> Option<i32> {
-    let tag = Tag::read(path)?;
+fn process_file(base: &str, path: &str) -> Result<(), std::io::Error> {
+    let tag = match Tag::read(path) {
+        Some(tag) => tag,
+        None => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Coudn't read tags.",
+            ))
+        }
+    };
 
     let nicedir = format!(
         "{}/{}/{}",
@@ -96,11 +104,11 @@ fn process_file(base: &str, path: &str) -> Option<i32> {
 
     if path.nfc().collect::<String>() != nicepath {
         println!("{} -> {}", path, nicepath);
-        std::fs::create_dir_all(&nicedir).expect("can't make directories");
-        std::fs::rename(&path, &nicepath).expect("rename failed");
+        std::fs::create_dir_all(&nicedir)?;
+        std::fs::rename(&path, &nicepath)?;
     }
 
-    return Some(0);
+    return Ok(());
 }
 
 fn main() {
@@ -112,9 +120,12 @@ fn main() {
     println!("processing {}", canonical_string);
 
     let pattern = format!("{}/**/*.{{flac,opus}}", canonical_string);
-    for entry in globwalk::glob(pattern).expect("Glob error.") {
-        if let Ok(entry) = entry {
-            process_file(&canonical_string, &entry.path().to_str().unwrap());
+    for entry in globwalk::glob(pattern)
+        .expect("Glob error.")
+        .filter_map(|e| e.ok())
+    {
+        if let Some(path) = entry.path().to_str() {
+            process_file(&canonical_string, &path).ok();
         }
     }
 }
