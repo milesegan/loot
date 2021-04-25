@@ -73,6 +73,7 @@ dependencies = [
  "globwalk",
  "metaflac",
  "opus_headers",
+ "regex",
  "unicode-normalization",
  "unidecode",
 ]
