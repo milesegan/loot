@@ -8,7 +8,10 @@ mod tag;
 fn tidy_string(string: &str) -> String {
     let tidied = diacritics::remove_diacritics(string)
         .nfc()
-        .collect::<String>();
+        .collect::<String>()
+        .replace("/", "-")
+        .trim()
+        .to_lowercase();
 
     let remove_regex = Regex::new(r#"[":?']"#).unwrap();
     let removed = remove_regex.replace_all(&tidied, "").into_owned();
@@ -22,21 +25,22 @@ fn process_file(base: &str, path: &str) -> tag::Result<()> {
 
     let extension = Path::new(&path)
         .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("unknown");
+        .ok_or(tag::TagError::ReadError)?
+        .to_str()
+        .ok_or(tag::TagError::ReadError)?;
 
     let nicedir = format!(
         "{}/{}/{}",
-        tidy_string(base),
-        tidy_string(&tag.artist).replace("/", "-").trim(),
-        tidy_string(&tag.album).replace("/", "-").trim()
+        base,
+        tidy_string(&tag.artist),
+        tidy_string(&tag.album)
     );
 
     let nicepath = format!(
         "{}/{:0>2} {}.{}",
         nicedir,
         tag.number,
-        tidy_string(&tag.track).replace("/", "-").trim(),
+        tidy_string(&tag.track),
         extension
     );
 
