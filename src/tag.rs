@@ -45,6 +45,7 @@ pub struct Tag {
     // disc: Option<i8>,
     pub number: i32,
     pub track: String,
+    pub year: i32,
 }
 
 fn extract_tag<'a>(tag: &'a HashMap<String, Vec<String>>, key: &str) -> Result<&'a String> {
@@ -89,13 +90,17 @@ impl Tag {
         let album = extract_tag(&comments, "ALBUM")?;
         let track = extract_tag(&comments, "TITLE")?;
         let number = extract_tag(&comments, "TRACKNUMBER").and_then(|t| parse_number(t))?;
+        let date = extract_tag(&comments, "DATE").and_then(|t| parse_number(t));
+        let year = extract_tag(&comments, "YEAR").and_then(|t| parse_number(t));
+        let tag_year = date.or(year)?;
 
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             // disc: None,
-            number: number.to_owned(),
+            number,
             track: track.to_owned(),
+            year: tag_year,
         });
     }
 
@@ -109,13 +114,23 @@ impl Tag {
             .get("TRACKNUMBER")
             .ok_or(TagError::ReadError)
             .and_then(|t| parse_number(t))?;
+        let date = comments
+            .get("DATE")
+            .ok_or(TagError::ReadError)
+            .and_then(|t| parse_number(t));
+        let year = comments
+            .get("YEAR")
+            .ok_or(TagError::ReadError)
+            .and_then(|t| parse_number(t));
+        let tag_year = date.or(year)?;
 
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             // disc: None,
-            number: number.to_owned(),
+            number,
             track: track.to_owned(),
+            year: tag_year,
         });
     }
 }

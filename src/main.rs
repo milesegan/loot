@@ -1,5 +1,5 @@
+use clap::{App, Arg, SubCommand};
 use regex::Regex;
-use std::env;
 use std::path::Path;
 use unicode_normalization::UnicodeNormalization;
 
@@ -7,20 +7,19 @@ mod tag;
 
 fn tidy_string(string: &str) -> String {
     let tidied = diacritics::remove_diacritics(string)
-        .nfc()
+        .nfkc()
         .collect::<String>()
-        .replace("/", "-")
         .trim()
         .to_lowercase();
 
-    let remove_regex = Regex::new(r#"[":?']"#).unwrap();
+    let remove_regex = Regex::new(r#"[":?\*']"#).unwrap();
     let removed = remove_regex.replace_all(&tidied, "").into_owned();
 
-    let replace_regex = Regex::new(r#"[><|]"#).unwrap();
+    let replace_regex = Regex::new(r#"[/><|\\]"#).unwrap();
     return replace_regex.replace_all(&removed, "-").into_owned();
 }
 
-fn process_file(base: &str, path: &str) -> tag::Result<()> {
+fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
     let tag = tag::Tag::read(path)?;
 
     let extension = Path::new(&path)
@@ -44,19 +43,18 @@ fn process_file(base: &str, path: &str) -> tag::Result<()> {
         extension
     );
 
-    if path.nfc().collect::<String>() != nicepath {
+    if path.to_owned() != nicepath {
         println!("{} -> {}", path, nicepath);
-        std::fs::create_dir_all(&nicedir)?;
-        std::fs::rename(&path, &nicepath)?;
+        if !dry_run {
+            std::fs::create_dir_all(&nicedir)?;
+            std::fs::rename(&path, &nicepath)?;
+        }
     }
 
     return Ok(());
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    let path = args.get(1).expect("No path specified.");
-
+fn normalize(path: &std::ffi::OsString, dry_run: bool) {
     let canonical = Path::new(path).canonicalize().expect("Invalid path.");
     let canonical_string = canonical.to_str().expect("Invalid path.");
     println!("processing {}", canonical_string);
@@ -67,10 +65,33 @@ fn main() {
         .filter_map(|e| e.ok())
     {
         if let Some(path) = entry.path().to_str() {
-            match process_file(&canonical_string, &path) {
+            match process_file(&canonical_string, &path, dry_run) {
                 Ok(_) => (),
                 Err(_) => eprintln!("Error reading tag: {}", path),
             }
         }
+    }
+}
+
+fn main() {
+    let matches = App::new("frust")
+        .version("1.0")
+        .subcommand(
+            SubCommand::with_name("norm").args(&[
+                Arg::with_name("dry-run")
+                    .short("d")
+                    .long("dry-run")
+                    .help("show changes but don't rename"),
+                Arg::with_name("path")
+                    .help("the root path of files to normalize")
+                    .index(1)
+                    .required(true),
+            ]),
+        )
+        .get_matches();
+
+    if let Some(norm) = matches.subcommand_matches("norm") {
+        let dry_run = norm.args.contains_key("dry-run");
+        normalize(&norm.args["path"].vals[0], dry_run);
     }
 }
