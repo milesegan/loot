@@ -20,6 +20,8 @@ fn tidy_string(string: &str) -> String {
 }
 
 fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
+    let the_regex = Regex::new(r#"^the "#).unwrap();
+
     let tag = tag::Tag::read(path)?;
 
     let extension = Path::new(&path)
@@ -28,10 +30,12 @@ fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
         .to_str()
         .ok_or(tag::TagError::ReadError)?;
 
+    let tidy_artist = tidy_string(&tag.artist);
+
     let nicedir = format!(
         "{}/{}/{}",
         base,
-        tidy_string(&tag.artist),
+        the_regex.replace_all(&tidy_artist, "").into_owned(),
         tidy_string(&tag.album)
     );
 
