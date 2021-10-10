@@ -84,10 +84,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "diacritics"
-version = "0.1.1"
+name = "deunicode"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4f99b2193cd68ca1a439d48ef670a67270760211f5fc85eb74bf6aa2b810b74"
+checksum = "f2c9736e15e7df1638a7f6eee92a6511615c738246a052af5ba86f039b65aede"
 
 [[package]]
 name = "fnv"
@@ -100,13 +100,12 @@ name = "frust"
 version = "0.1.0"
 dependencies = [
  "clap",
- "diacritics",
+ "deunicode",
  "globwalk",
  "metaflac",
  "opus_headers",
  "regex",
  "unicode-normalization",
- "unidecode",
 ]
 
 [[package]]
@@ -195,9 +194,9 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "metaflac"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4685bf0039a9d2919c2dbb281cba1c58d168dce58f519cbd70c468ce2c36a748"
+checksum = "e1470d3cc1bb0d692af5eb3afb594330b8ba09fd91c32c4e1c6322172a5ba750"
 dependencies = [
  "byteorder",
  "hex",
@@ -295,12 +294,6 @@ name = "unicode-width"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
-
-[[package]]
-name = "unidecode"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402bb19d8e03f1d1a7450e2bd613980869438e0666331be3e073089124aa1adc"
 
 [[package]]
 name = "vec_map"

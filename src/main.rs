@@ -1,20 +1,14 @@
 use clap::{App, Arg, SubCommand};
 use regex::Regex;
 use std::path::Path;
-use unicode_normalization::UnicodeNormalization;
 
 mod tag;
 
 fn tidy_string(string: &str) -> String {
-    let tidied = diacritics::remove_diacritics(string)
-        .nfkc()
-        .collect::<String>()
-        .trim()
-        .to_lowercase();
-
+    let tidied = string.trim().to_lowercase();
+    let no_diacritics = deunicode::deunicode_with_tofu(&tidied, "_");
     let remove_regex = Regex::new(r#"[":?\*']"#).unwrap();
-    let removed = remove_regex.replace_all(&tidied, "").into_owned();
-
+    let removed = remove_regex.replace_all(&no_diacritics, "").into_owned();
     let replace_regex = Regex::new(r#"[/><|\\]"#).unwrap();
     return replace_regex.replace_all(&removed, "-").into_owned();
 }
