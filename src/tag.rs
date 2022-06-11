@@ -87,6 +87,7 @@ impl Tag {
         let number = extract_tag(&comments, "TRACKNUMBER")
             .and_then(|t| parse_number(t))
             .ok_or(TagError::ReadError)?;
+        let disc = extract_tag(&comments, "DISCNUMBER").and_then(|t| parse_number(t));
         let date = extract_tag(&comments, "DATE").and_then(|t| parse_number(t));
         let year = extract_tag(&comments, "YEAR").and_then(|t| parse_number(t));
         let tag_year = date.or(year);
@@ -95,7 +96,7 @@ impl Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             album_artist: album_artist.cloned(),
-            disc: None,
+            disc: if disc.unwrap_or(0) > 0 { disc } else { None },
             number,
             track: track.to_owned(),
             year: tag_year,
