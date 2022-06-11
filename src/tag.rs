@@ -41,6 +41,7 @@ enum FileType {
 
 pub struct Tag {
     pub album: String,
+    pub album_artist: Option<String>,
     pub artist: String,
     // disc: Option<i8>,
     pub number: i32,
@@ -48,12 +49,8 @@ pub struct Tag {
     pub year: i32,
 }
 
-fn extract_tag<'a>(tag: &'a HashMap<String, Vec<String>>, key: &str) -> Result<&'a String> {
-    return tag
-        .get(key)
-        .ok_or(TagError::ReadError)?
-        .get(0)
-        .ok_or(TagError::ReadError);
+fn extract_tag<'a>(tag: &'a HashMap<String, Vec<String>>, key: &str) -> Option<&'a String> {
+    return tag.get(key)?.get(0);
 }
 
 fn parse_number(tag: &str) -> Result<i32> {
@@ -86,17 +83,25 @@ impl Tag {
     fn read_flac(path: &str) -> Result<Tag> {
         let mut tag = metaflac::Tag::read_from_path(&path)?;
         let comments = &tag.vorbis_comments_mut().comments;
-        let artist = extract_tag(&comments, "ARTIST")?;
-        let album = extract_tag(&comments, "ALBUM")?;
-        let track = extract_tag(&comments, "TITLE")?;
-        let number = extract_tag(&comments, "TRACKNUMBER").and_then(|t| parse_number(t))?;
-        let date = extract_tag(&comments, "DATE").and_then(|t| parse_number(t));
-        let year = extract_tag(&comments, "YEAR").and_then(|t| parse_number(t));
+        let artist = extract_tag(&comments, "ARTIST").ok_or(TagError::ReadError)?;
+        let album = extract_tag(&comments, "ALBUM").ok_or(TagError::ReadError)?;
+        let album_artist = extract_tag(&comments, "ALBUMARTIST");
+        let track = extract_tag(&comments, "TITLE").ok_or(TagError::ReadError)?;
+        let number = extract_tag(&comments, "TRACKNUMBER")
+            .ok_or(TagError::ReadError)
+            .and_then(|t| parse_number(t))?;
+        let date = extract_tag(&comments, "DATE")
+            .ok_or(TagError::ReadError)
+            .and_then(|t| parse_number(t));
+        let year = extract_tag(&comments, "YEAR")
+            .ok_or(TagError::ReadError)
+            .and_then(|t| parse_number(t));
         let tag_year = date.or(year)?;
 
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
+            album_artist: album_artist.cloned(),
             // disc: None,
             number,
             track: track.to_owned(),
@@ -109,6 +114,7 @@ impl Tag {
         let comments = headers.comments.user_comments;
         let artist = comments.get("ARTIST").ok_or(TagError::ReadError)?;
         let album = comments.get("ALBUM").ok_or(TagError::ReadError)?;
+        let album_artist = comments.get("ALBUMARTIST");
         let track = comments.get("TITLE").ok_or(TagError::ReadError)?;
         let number = comments
             .get("TRACKNUMBER")
@@ -127,6 +133,7 @@ impl Tag {
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
+            album_artist: album_artist.cloned(),
             // disc: None,
             number,
             track: track.to_owned(),

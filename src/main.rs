@@ -7,10 +7,10 @@ mod tag;
 fn tidy_string(string: &str) -> String {
     let tidied = string.trim().to_lowercase();
     let no_diacritics = deunicode::deunicode_with_tofu(&tidied, "_");
-    let remove_regex = Regex::new(r#"[":?\*']"#).unwrap();
+    let remove_regex = Regex::new(r#"[":\?\*'!,&\-\(\)\.]"#).unwrap();
     let removed = remove_regex.replace_all(&no_diacritics, "").into_owned();
-    let replace_regex = Regex::new(r#"[/><|\\]"#).unwrap();
-    return replace_regex.replace_all(&removed, "-").into_owned();
+    let replace_regex = Regex::new(r#"[/><|\\ ]+"#).unwrap();
+    return replace_regex.replace_all(&removed, "_").into_owned();
 }
 
 fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
@@ -24,7 +24,7 @@ fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
         .to_str()
         .ok_or(tag::TagError::ReadError)?;
 
-    let tidy_artist = tidy_string(&tag.artist);
+    let tidy_artist = tidy_string(&(tag.album_artist.unwrap_or(tag.artist.clone())));
 
     let nicedir = format!(
         "{}/{}/{}",
@@ -34,7 +34,7 @@ fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
     );
 
     let nicepath = format!(
-        "{}/{:0>2} {}.{}",
+        "{}/{:0>2}_{}.{}",
         nicedir,
         tag.number,
         tidy_string(&tag.track),
