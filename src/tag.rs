@@ -53,12 +53,9 @@ fn extract_tag<'a>(tag: &'a HashMap<String, Vec<String>>, key: &str) -> Option<&
     return tag.get(key)?.get(0);
 }
 
-fn parse_number(tag: &str) -> Result<i32> {
+fn parse_number(tag: &str) -> Option<i32> {
     let number_regex = Regex::new(r"[^0-9].*").unwrap();
-    return number_regex
-        .replace_all(tag, "")
-        .parse::<i32>()
-        .map_err(|_| TagError::ReadError);
+    return number_regex.replace_all(tag, "").parse::<i32>().ok();
 }
 
 fn file_type(path: &str) -> Option<FileType> {
@@ -88,15 +85,11 @@ impl Tag {
         let album_artist = extract_tag(&comments, "ALBUMARTIST");
         let track = extract_tag(&comments, "TITLE").ok_or(TagError::ReadError)?;
         let number = extract_tag(&comments, "TRACKNUMBER")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t))?;
-        let date = extract_tag(&comments, "DATE")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t));
-        let year = extract_tag(&comments, "YEAR")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t));
-        let tag_year = date.or(year).ok();
+            .and_then(|t| parse_number(t))
+            .ok_or(TagError::ReadError)?;
+        let date = extract_tag(&comments, "DATE").and_then(|t| parse_number(t));
+        let year = extract_tag(&comments, "YEAR").and_then(|t| parse_number(t));
+        let tag_year = date.or(year);
 
         return Ok(Tag {
             artist: artist.to_owned(),
@@ -118,20 +111,12 @@ impl Tag {
         let track = comments.get("TITLE").ok_or(TagError::ReadError)?;
         let number = comments
             .get("TRACKNUMBER")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t))?;
-        let date = comments
-            .get("DATE")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t));
-        let year = comments
-            .get("YEAR")
-            .ok_or(TagError::ReadError)
-            .and_then(|t| parse_number(t));
-        let tag_year = date.or(year).ok();
-        let disc = comments
-            .get("DISCNUMBER")
-            .and_then(|t| parse_number(t).ok());
+            .and_then(|t| parse_number(t))
+            .ok_or(TagError::ReadError)?;
+        let date = comments.get("DATE").and_then(|t| parse_number(t));
+        let year = comments.get("YEAR").and_then(|t| parse_number(t));
+        let tag_year = date.or(year);
+        let disc = comments.get("DISCNUMBER").and_then(|t| parse_number(t));
 
         return Ok(Tag {
             artist: artist.to_owned(),
