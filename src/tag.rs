@@ -43,10 +43,10 @@ pub struct Tag {
     pub album: String,
     pub album_artist: Option<String>,
     pub artist: String,
-    // disc: Option<i8>,
+    pub disc: Option<i32>,
     pub number: i32,
     pub track: String,
-    pub year: i32,
+    pub year: Option<i32>,
 }
 
 fn extract_tag<'a>(tag: &'a HashMap<String, Vec<String>>, key: &str) -> Option<&'a String> {
@@ -96,13 +96,13 @@ impl Tag {
         let year = extract_tag(&comments, "YEAR")
             .ok_or(TagError::ReadError)
             .and_then(|t| parse_number(t));
-        let tag_year = date.or(year)?;
+        let tag_year = date.or(year).ok();
 
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             album_artist: album_artist.cloned(),
-            // disc: None,
+            disc: None,
             number,
             track: track.to_owned(),
             year: tag_year,
@@ -128,13 +128,16 @@ impl Tag {
             .get("YEAR")
             .ok_or(TagError::ReadError)
             .and_then(|t| parse_number(t));
-        let tag_year = date.or(year)?;
+        let tag_year = date.or(year).ok();
+        let disc = comments
+            .get("DISCNUMBER")
+            .and_then(|t| parse_number(t).ok());
 
         return Ok(Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             album_artist: album_artist.cloned(),
-            // disc: None,
+            disc: disc,
             number,
             track: track.to_owned(),
             year: tag_year,

@@ -33,9 +33,12 @@ fn process_file(base: &str, path: &str, dry_run: bool) -> tag::Result<()> {
         tidy_string(&tag.album)
     );
 
+    let disc_prefix = tag.disc.map(|t| format!("{}-", t)).unwrap_or("".to_owned());
+
     let nicepath = format!(
-        "{}/{:0>2}_{}.{}",
+        "{}/{}{:0>2}_{}.{}",
         nicedir,
+        disc_prefix,
         tag.number,
         tidy_string(&tag.track),
         extension
