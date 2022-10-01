@@ -123,7 +123,7 @@ impl Tag {
             artist: artist.to_owned(),
             album: album.to_owned(),
             album_artist: album_artist.cloned(),
-            disc: disc,
+            disc,
             number,
             track: track.to_owned(),
             year: tag_year,
