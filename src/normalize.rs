@@ -6,7 +6,7 @@ use crate::tag;
 fn tidy_string(string: &str) -> String {
     let tidied = string.trim();
     let no_diacritics = deunicode::deunicode_with_tofu(&tidied, "_").to_lowercase();
-    let remove_regex = Regex::new(r#"[":;?*'!,&\-().]"#).unwrap();
+    let remove_regex = Regex::new(r#"["+<>#:;?*'!,&\-().]"#).unwrap();
     let removed = remove_regex.replace_all(&no_diacritics, "").into_owned();
     let replace_regex = Regex::new(r#"[/><|\\ ]+"#).unwrap();
     return replace_regex.replace_all(&removed, "_").into_owned();

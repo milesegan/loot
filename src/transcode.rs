@@ -32,23 +32,23 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool) {
 
     let dest_path = Path::new(dest_dir);
     let pattern = format!("{}/**/*.{{flac,opus}}", canonical_string);
-    let matches = globwalk::glob(&pattern)
+    globwalk::glob(&pattern)
         .expect("glob error")
         .filter_map(Result::ok)
         .into_iter()
-        .collect::<Vec<_>>();
-    matches.par_iter().for_each(|entry| {
-        let relative = entry
-            .path()
-            .strip_prefix(source_path)
-            .expect("Not a prefix");
-        let target = dest_path.join(relative).with_extension("opus");
-        if !target.exists() {
-            if dry_run {
-                println!("{}", target.to_string_lossy());
-            } else {
-                transcode_file(entry.path(), &target).expect("Error transcoding");
+        .par_bridge()
+        .for_each(|entry| {
+            let relative = entry
+                .path()
+                .strip_prefix(source_path)
+                .expect("Not a prefix");
+            let target = dest_path.join(relative).with_extension("opus");
+            if !target.exists() {
+                if dry_run {
+                    println!("{}", target.to_string_lossy());
+                } else {
+                    transcode_file(entry.path(), &target).expect("Error transcoding");
+                }
             }
-        }
-    });
+        });
 }
