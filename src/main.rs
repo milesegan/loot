@@ -25,6 +25,10 @@ fn main() {
             SubCommand::with_name("transcode")
                 .about("Transcode flac files.")
                 .args(&[
+                    Arg::with_name("dry-run")
+                        .short("d")
+                        .long("dry-run")
+                        .help("show changes but don't rename"),
                     Arg::with_name("source_path")
                         .help("The path of files to transcode.")
                         .required(true),
@@ -41,9 +45,11 @@ fn main() {
     }
 
     if let Some(transcode) = matches.subcommand_matches("transcode") {
+        let dry_run = transcode.args.contains_key("dry-run");
         transcode::transcode(
             &transcode.args["source_path"].vals[0].to_str().unwrap(),
             &transcode.args["dest_path"].vals[0].to_str().unwrap(),
+            dry_run,
         )
     }
 }
