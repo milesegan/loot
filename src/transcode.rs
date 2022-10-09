@@ -2,7 +2,6 @@ use rayon::prelude::*;
 use std::path::Path;
 
 fn transcode_file(source: &Path, dest: &Path) -> std::io::Result<()> {
-    println!("{:?} => {:?}", source, dest);
     std::fs::remove_file(dest).ok();
     let tmp = tempfile::NamedTempFile::new()?;
 
@@ -13,13 +12,23 @@ fn transcode_file(source: &Path, dest: &Path) -> std::io::Result<()> {
         .arg("--discard-pictures")
         .arg(source)
         .arg(tmp.path())
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to execute child");
     child.wait_with_output().expect("failed to wait on child");
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
     std::fs::rename(tmp.path(), dest).expect("Error moving file");
+    return Ok(());
+}
+
+fn extract_cover(source: &Path, dest: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
+    let child = std::process::Command::new("metaflac")
+        .arg("--export-picture-to")
+        .arg(dest)
+        .arg(source)
+        .spawn()
+        .expect("Failed to execute");
+    child.wait_with_output().expect("Failed to wait");
     return Ok(());
 }
 
@@ -42,11 +51,19 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool) {
                 .path()
                 .strip_prefix(source_path)
                 .expect("Not a prefix");
+            let cover = dest_path
+                .join(relative)
+                .with_file_name("cover")
+                .with_extension("jpg");
+            if !cover.exists() {
+                extract_cover(entry.path(), &cover).ok();
+            }
             let target = dest_path.join(relative).with_extension("opus");
             if !target.exists() {
                 if dry_run {
                     println!("{}", target.to_string_lossy());
                 } else {
+                    println!("{}", relative.to_string_lossy());
                     transcode_file(entry.path(), &target).expect("Error transcoding");
                 }
             }
