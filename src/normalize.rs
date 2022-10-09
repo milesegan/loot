@@ -1,3 +1,4 @@
+use lofty::Accessor;
 use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
@@ -17,26 +18,30 @@ fn tidy_string(string: &str) -> String {
 fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     let the_regex = Regex::new(r#"^the "#).unwrap();
 
-    let tag = tag::Tag::read(path)?;
+    let tag = tag::read(path)?;
 
     let extension = path
         .extension()
         .and_then(|e| e.to_str())
         .ok_or(AppError::PathError)?;
 
-    let tidy_artist = tidy_string(&(tag.album_artist.unwrap_or(tag.artist.clone())));
+    let album_artist = tag.get_string(&lofty::ItemKey::AlbumArtist);
+    let tidy_artist = tidy_string(album_artist.unwrap_or(tag.artist().unwrap_or("")));
 
     let nice_dir = base
         .join(the_regex.replace_all(&tidy_artist, "").into_owned())
-        .join(tidy_string(&tag.album));
+        .join(tidy_string(tag.album().unwrap_or("")));
 
-    let disc_prefix = tag.disc.map(|t| format!("{}-", t)).unwrap_or("".to_owned());
+    let disc_prefix = tag
+        .disk()
+        .map(|t| format!("{}-", t))
+        .unwrap_or("".to_owned());
 
     let nice_path = nice_dir.join(format!(
         "{}{:0>2}_{}.{}",
         disc_prefix,
-        tag.number,
-        tidy_string(&tag.track),
+        tag.track().unwrap_or(1),
+        tidy_string(&tag.title().unwrap_or("")),
         extension
     ));
 

@@ -18,6 +18,12 @@ impl From<std::io::Error> for AppError {
     }
 }
 
+impl From<lofty::LoftyError> for AppError {
+    fn from(_err: lofty::LoftyError) -> AppError {
+        AppError::ReadTagError
+    }
+}
+
 impl From<opus_headers::ParseError> for AppError {
     fn from(_err: opus_headers::ParseError) -> AppError {
         AppError::ReadTagError
