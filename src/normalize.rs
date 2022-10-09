@@ -2,6 +2,7 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
 
+use crate::error::{AppError, Result};
 use crate::tag;
 
 fn tidy_string(string: &str) -> String {
@@ -13,16 +14,15 @@ fn tidy_string(string: &str) -> String {
     return replace_regex.replace_all(&removed, "_").into_owned();
 }
 
-fn process_file(base: &Path, path: &Path, dry_run: bool) -> tag::Result<()> {
+fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     let the_regex = Regex::new(r#"^the "#).unwrap();
 
     let tag = tag::Tag::read(path)?;
 
-    let extension = Path::new(&path)
+    let extension = path
         .extension()
-        .ok_or(tag::TagError::ReadError)?
-        .to_str()
-        .ok_or(tag::TagError::ReadError)?;
+        .and_then(|e| e.to_str())
+        .ok_or(AppError::PathError)?;
 
     let tidy_artist = tidy_string(&(tag.album_artist.unwrap_or(tag.artist.clone())));
 

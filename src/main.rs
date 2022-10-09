@@ -1,5 +1,6 @@
 use clap::{App, Arg, SubCommand};
 
+mod error;
 mod normalize;
 mod prune;
 mod tag;
