@@ -24,18 +24,6 @@ impl From<lofty::LoftyError> for AppError {
     }
 }
 
-impl From<opus_headers::ParseError> for AppError {
-    fn from(_err: opus_headers::ParseError) -> AppError {
-        AppError::ReadTagError
-    }
-}
-
-impl From<metaflac::Error> for AppError {
-    fn from(_err: metaflac::Error) -> AppError {
-        AppError::ReadTagError
-    }
-}
-
 impl From<std::path::StripPrefixError> for AppError {
     fn from(_err: std::path::StripPrefixError) -> AppError {
         AppError::PathError
