@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::path::Path;
+use std::{path::Path, time::SystemTime};
 
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
@@ -85,7 +85,23 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
                 TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };
-            if !target.exists() {
+            let source_meta = entry
+                .metadata()
+                .ok()
+                .map(|f| f.modified())
+                .unwrap_or(Ok(SystemTime::now()))
+                .ok();
+            let target_meta = target
+                .metadata()
+                .ok()
+                .map(|f| f.modified())
+                .unwrap_or(Ok(SystemTime::now()))
+                .ok();
+            if !target.exists()
+                || (target_meta.is_some()
+                    && source_meta.is_some()
+                    && source_meta.unwrap() > target_meta.unwrap())
+            {
                 if dry_run {
                     println!("{}", target.to_string_lossy());
                 } else {
