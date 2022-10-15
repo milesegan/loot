@@ -1,19 +1,42 @@
 use rayon::prelude::*;
 use std::path::Path;
 
-fn transcode_file(source: &Path, dest: &Path) -> std::io::Result<()> {
+#[derive(Copy, Clone)]
+pub enum TranscodeFormat {
+    Opus,
+    Mp3,
+}
+
+fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::io::Result<()> {
     std::fs::remove_file(dest).ok();
     let tmp = tempfile::NamedTempFile::new()?;
 
-    let child = std::process::Command::new("opusenc")
-        .arg("--quiet")
-        .arg("--bitrate")
-        .arg("128")
-        .arg("--discard-pictures")
-        .arg(source)
-        .arg(tmp.path())
-        .spawn()
-        .expect("failed to execute child");
+    let child = match format {
+        TranscodeFormat::Opus => std::process::Command::new("opusenc")
+            .arg("--quiet")
+            .arg("--bitrate")
+            .arg("128")
+            .arg("--discard-pictures")
+            .arg(source)
+            .arg(tmp.path())
+            .spawn()
+            .expect("failed to execute child"),
+        TranscodeFormat::Mp3 => std::process::Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-loglevel")
+            .arg("quiet")
+            .arg("-i")
+            .arg(source)
+            .arg("-map")
+            .arg("a")
+            .arg("-q:a")
+            .arg("3")
+            .arg("-f")
+            .arg("mp3")
+            .arg(tmp.path())
+            .spawn()
+            .expect("failed to execute child"),
+    };
     child.wait_with_output().expect("failed to wait on child");
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
     std::fs::rename(tmp.path(), dest).expect("Error moving file");
@@ -32,7 +55,7 @@ fn extract_cover(source: &Path, dest: &Path) -> std::io::Result<()> {
     return Ok(());
 }
 
-pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool) {
+pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: TranscodeFormat) {
     let canonical = Path::new(source_path)
         .canonicalize()
         .expect("Invalid path.");
@@ -58,13 +81,16 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool) {
             if !cover.exists() {
                 extract_cover(entry.path(), &cover).ok();
             }
-            let target = dest_path.join(relative).with_extension("opus");
+            let target = match format {
+                TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
+                TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
+            };
             if !target.exists() {
                 if dry_run {
                     println!("{}", target.to_string_lossy());
                 } else {
                     println!("{}", relative.to_string_lossy());
-                    transcode_file(entry.path(), &target).expect("Error transcoding");
+                    transcode_file(entry.path(), &target, format).expect("Error transcoding");
                 }
             }
         });

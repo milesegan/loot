@@ -6,7 +6,7 @@ pub fn prune(source_dir: &str, dest_dir: &str, dry_run: bool) {
     println!("processing {}", canonical_string);
 
     let source_path = Path::new(source_dir);
-    let pattern = format!("{}/**/*.{{flac,opus}}", canonical_string);
+    let pattern = format!("{}/**/*.{{mp3,opus}}", canonical_string);
     globwalk::glob(&pattern)
         .expect("glob error")
         .filter_map(Result::ok)
