@@ -3,6 +3,7 @@ use std::path::Path;
 
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
+    Ogg,
     Opus,
     Mp3,
 }
@@ -33,6 +34,15 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("3")
             .arg("-f")
             .arg("mp3")
+            .arg(tmp.path())
+            .spawn()
+            .expect("failed to execute child"),
+        TranscodeFormat::Ogg => std::process::Command::new("oggenc")
+            .arg("--quality")
+            .arg("6")
+            .arg("--quiet")
+            .arg(source)
+            .arg("--output")
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
@@ -82,6 +92,7 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
                 extract_cover(entry.path(), &cover).ok();
             }
             let target = match format {
+                TranscodeFormat::Ogg => dest_path.join(relative).with_extension("ogg"),
                 TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };
