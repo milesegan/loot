@@ -33,7 +33,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("-map")
             .arg("-0:1")
             .arg("-q:a")
-            .arg("3")
+            .arg("4")
             .arg("-f")
             .arg("mp3")
             .arg(tmp.path())
