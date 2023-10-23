@@ -3,6 +3,7 @@ use std::path::Path;
 
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
+    Aac,
     Ogg,
     Opus,
     Mp3,
@@ -19,6 +20,23 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("96")
             .arg("--discard-pictures")
             .arg(source)
+            .arg(tmp.path())
+            .spawn()
+            .expect("failed to execute child"),
+        TranscodeFormat::Aac => std::process::Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-loglevel")
+            .arg("quiet")
+            .arg("-i")
+            .arg(source)
+            .arg("-c:a")
+            .arg("aac_at")
+            .arg("-map")
+            .arg("a:0")
+            .arg("-q:a")
+            .arg("9")
+            .arg("-f")
+            .arg("mp4")
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
@@ -98,6 +116,7 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
                 extract_cover(entry.path(), &cover).ok();
             }
             let target = match format {
+                TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
                 TranscodeFormat::Ogg => dest_path.join(relative).with_extension("ogg"),
                 TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),

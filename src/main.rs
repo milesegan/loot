@@ -24,6 +24,22 @@ fn main() {
                 ]),
         )
         .subcommand(
+            SubCommand::with_name("transcode-aac")
+                .about("Transcode flac files to aac.")
+                .args(&[
+                    Arg::with_name("dry-run")
+                        .short("d")
+                        .long("dry-run")
+                        .help("show changes but don't transcode"),
+                    Arg::with_name("source_path")
+                        .help("The path of files to transcode.")
+                        .required(true),
+                    Arg::with_name("dest_path")
+                        .help("The destination path to write transcode files.")
+                        .required(true),
+                ]),
+        )
+        .subcommand(
             SubCommand::with_name("transcode-ogg")
                 .about("Transcode flac files to opus.")
                 .args(&[
@@ -92,6 +108,16 @@ fn main() {
     if let Some(norm) = matches.subcommand_matches("norm") {
         let dry_run = norm.args.contains_key("dry-run");
         normalize::normalize(&norm.args["path"].vals[0], dry_run);
+    }
+
+    if let Some(transcode) = matches.subcommand_matches("transcode-aac") {
+        let dry_run = transcode.args.contains_key("dry-run");
+        transcode::transcode(
+            &transcode.args["source_path"].vals[0].to_str().unwrap(),
+            &transcode.args["dest_path"].vals[0].to_str().unwrap(),
+            dry_run,
+            transcode::TranscodeFormat::Aac,
+        )
     }
 
     if let Some(transcode) = matches.subcommand_matches("transcode-opus") {
