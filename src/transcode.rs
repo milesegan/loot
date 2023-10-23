@@ -77,10 +77,14 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
 
 fn extract_cover(source: &Path, dest: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
-    let child = std::process::Command::new("metaflac")
-        .arg("--export-picture-to")
-        .arg(dest)
+    let child = std::process::Command::new("ffmpeg")
+        .arg("-y")
+        .arg("-loglevel")
+        .arg("quiet")
+        .arg("-i")
         .arg(source)
+        .arg("-an")
+        .arg(dest)
         .spawn()
         .expect("Failed to execute");
     child.wait_with_output().expect("Failed to wait");
