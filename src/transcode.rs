@@ -4,7 +4,6 @@ use std::path::Path;
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
     Aac,
-    Ogg,
     Opus,
     Mp3,
 }
@@ -69,15 +68,6 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
-        TranscodeFormat::Ogg => std::process::Command::new("oggenc")
-            .arg("--quality")
-            .arg("6")
-            .arg("--quiet")
-            .arg(source)
-            .arg("--output")
-            .arg(tmp.path())
-            .spawn()
-            .expect("failed to execute child"),
     };
     child.wait_with_output().expect("failed to wait on child");
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
@@ -125,7 +115,6 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
             }
             let target = match format {
                 TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
-                TranscodeFormat::Ogg => dest_path.join(relative).with_extension("ogg"),
                 TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };
