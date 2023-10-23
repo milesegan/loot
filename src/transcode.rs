@@ -14,12 +14,20 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
     let tmp = tempfile::NamedTempFile::new()?;
 
     let child = match format {
-        TranscodeFormat::Opus => std::process::Command::new("opusenc")
-            .arg("--quiet")
-            .arg("--bitrate")
-            .arg("96")
-            .arg("--discard-pictures")
+        TranscodeFormat::Opus => std::process::Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-loglevel")
+            .arg("quiet")
+            .arg("-i")
             .arg(source)
+            .arg("-c:a")
+            .arg("libopus")
+            .arg("-map")
+            .arg("a:0")
+            .arg("-b:a")
+            .arg("96k")
+            .arg("-f")
+            .arg("opus")
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
