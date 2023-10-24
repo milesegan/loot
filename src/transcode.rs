@@ -1,3 +1,4 @@
+use globwalk::DirEntry;
 use rayon::prelude::*;
 use std::path::Path;
 
@@ -100,50 +101,51 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
 
     let dest_path = Path::new(dest_dir);
     let pattern = format!("{}/**/*.{{flac,opus}}", canonical_string);
-    globwalk::glob(&pattern)
+    let mut matches = globwalk::glob(&pattern)
         .expect("glob error")
         .filter_map(Result::ok)
         .into_iter()
-        .par_bridge()
-        .for_each(|entry| {
-            let relative = entry
-                .path()
-                .strip_prefix(source_path)
-                .expect("Not a prefix");
-            let cover = dest_path
-                .join(relative)
-                .with_file_name("cover")
-                .with_extension("jpg");
-            if !cover.exists() {
-                extract_cover(entry.path(), &cover).ok();
-            }
-            let target = match format {
-                TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
-                TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
-                TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
-            };
-            let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
-            let target_meta = target.metadata().and_then(|m| m.modified()).ok();
-            match (source_meta, target_meta) {
-                (Some(source_time), Some(target_time)) if source_time > target_time => {
-                    if dry_run {
-                        println!("{}", target.to_string_lossy());
-                    } else {
-                        println!("{}", relative.to_string_lossy());
-                        transcode_file(entry.path(), &target, format).expect("Error transcoding");
-                    }
-                }
-                (Some(_), None) => {
-                    if dry_run {
-                        println!("{}", target.to_string_lossy());
-                    } else {
-                        println!("{}", relative.to_string_lossy());
-                        transcode_file(entry.path(), &target, format).expect("Error transcoding");
-                    }
-                }
-                _ => {
-                    // nothing
+        .collect::<Vec<DirEntry>>();
+    matches.sort_by(|a, b| a.path().cmp(b.path()));
+    matches.into_iter().par_bridge().for_each(|entry| {
+        let relative = entry
+            .path()
+            .strip_prefix(source_path)
+            .expect("Not a prefix");
+        let cover = dest_path
+            .join(relative)
+            .with_file_name("cover")
+            .with_extension("jpg");
+        if !cover.exists() {
+            extract_cover(entry.path(), &cover).ok();
+        }
+        let target = match format {
+            TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
+            TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
+            TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
+        };
+        let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
+        let target_meta = target.metadata().and_then(|m| m.modified()).ok();
+        match (source_meta, target_meta) {
+            (Some(source_time), Some(target_time)) if source_time > target_time => {
+                if dry_run {
+                    println!("{}", target.to_string_lossy());
+                } else {
+                    println!("{}", relative.to_string_lossy());
+                    transcode_file(entry.path(), &target, format).expect("Error transcoding");
                 }
             }
-        });
+            (Some(_), None) => {
+                if dry_run {
+                    println!("{}", target.to_string_lossy());
+                } else {
+                    println!("{}", relative.to_string_lossy());
+                    transcode_file(entry.path(), &target, format).expect("Error transcoding");
+                }
+            }
+            _ => {
+                // nothing
+            }
+        }
+    });
 }
