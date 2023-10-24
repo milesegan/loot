@@ -39,6 +39,8 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(source)
             .arg("-c:a")
             .arg("aac_at")
+            .arg("-ar")
+            .arg("44100")
             .arg("-map")
             .arg("a:0")
             .arg("-q:a")
