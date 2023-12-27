@@ -1,7 +1,9 @@
+#[derive(Debug)]
 pub enum AppError {
     IoError,
     PathError,
     ReadTagError,
+    WriteTagError,
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;

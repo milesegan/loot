@@ -2,6 +2,8 @@ use globwalk::DirEntry;
 use rayon::prelude::*;
 use std::path::Path;
 
+use crate::tag;
+
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
     Aac,
@@ -31,22 +33,16 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
-        TranscodeFormat::Aac => std::process::Command::new("ffmpeg")
-            .arg("-y")
-            .arg("-loglevel")
-            .arg("quiet")
-            .arg("-i")
-            .arg(source)
-            .arg("-c:a")
-            .arg("aac_at")
-            .arg("-ar")
-            .arg("44100")
-            .arg("-map")
-            .arg("a:0")
-            .arg("-q:a")
-            .arg("9")
+        TranscodeFormat::Aac => std::process::Command::new("afconvert")
+            .arg("-d")
+            .arg("aac")
             .arg("-f")
-            .arg("mp4")
+            .arg("m4af")
+            .arg("-s")
+            .arg("2")
+            .arg("-b")
+            .arg("96000")
+            .arg(source)
             .arg(tmp.path())
             .spawn()
             .expect("failed to execute child"),
@@ -75,6 +71,10 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
     child.wait_with_output().expect("failed to wait on child");
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
     std::fs::rename(tmp.path(), dest).expect("Error moving file");
+    match format {
+        TranscodeFormat::Aac => tag::copy(source, dest).expect("Error copying tag"),
+        _ => (),
+    }
     return Ok(());
 }
 
