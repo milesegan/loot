@@ -26,11 +26,11 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
         .ok_or(AppError::PathError)?;
 
     let album_artist = tag.get_string(&lofty::ItemKey::AlbumArtist);
-    let tidy_artist = tidy_string(album_artist.unwrap_or(tag.artist().unwrap_or("")));
+    let tidy_artist = tidy_string(album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")));
 
     let nice_dir = base
         .join(the_regex.replace_all(&tidy_artist, "").into_owned())
-        .join(tidy_string(tag.album().unwrap_or("")));
+        .join(tidy_string(tag.album().as_deref().unwrap_or("")));
 
     let disc_prefix = tag
         .disk()
@@ -41,7 +41,7 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
         "{}{:0>2}_{}.{}",
         disc_prefix,
         tag.track().unwrap_or(1),
-        tidy_string(&tag.title().unwrap_or("")),
+        tidy_string(&tag.title().as_deref().unwrap_or("")),
         extension
     ));
 
