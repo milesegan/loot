@@ -16,9 +16,9 @@ pub fn copy(src: &Path, dest: &Path) -> Result<()> {
 
     let mut dest_file = Probe::open(&dest)?.read()?;
     let dest_tag = dest_file.primary_tag_mut().ok_or(AppError::WriteTagError)?;
-    // for item in src_tag.items() {
-    //     dest_tag.push(item.clone());
-    // }
+    for item in src_tag.items() {
+        dest_tag.push(item.clone());
+    }
     if let Some(publisher) = src_tag.get_string(&ItemKey::Publisher) {
         dest_tag.insert_text(ItemKey::ContentGroup, publisher.to_string());
     }
