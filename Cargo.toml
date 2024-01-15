@@ -8,11 +8,11 @@ edition = "2018"
 
 [dependencies]
 clap = "2.34.0"
-globwalk = "0.9.0"
+globwalk = "0.9.1"
 regex = "1.10.2"
 unicode-normalization = "0.1.22"
 deunicode = "1.4.2"
-tempfile = "3.8.1"
+tempfile = "3.9.0"
 rayon = "1.8.0"
-lofty = { git = "https://github.com/Serial-ATA/lofty-rs", branch = "main" }
+lofty = "0.18.0"
 filetime = "0.2.23"
