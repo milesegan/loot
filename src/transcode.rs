@@ -120,6 +120,7 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
         .collect::<Vec<DirEntry>>();
     matches.sort_by(|a, b| a.path().cmp(b.path()));
     matches.into_iter().par_bridge().for_each(|entry| {
+        let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
         let relative = entry
             .path()
             .strip_prefix(source_path)
@@ -128,15 +129,23 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
             .join(relative)
             .with_file_name("cover")
             .with_extension("jpg");
-        if !cover.exists() {
-            extract_cover(entry.path(), &cover).ok();
+        let cover_meta = cover.metadata().and_then(|m| m.modified()).ok();
+        match (source_meta, cover_meta) {
+            (Some(source_time), Some(target_time)) if source_time > target_time => {
+                extract_cover(entry.path(), &cover).ok();
+            }
+            (Some(_), None) => {
+                extract_cover(entry.path(), &cover).ok();
+            }
+            _ => {
+                // nothing
+            }
         }
         let target = match format {
             TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
             TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
             TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
         };
-        let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
         let target_meta = target.metadata().and_then(|m| m.modified()).ok();
         match (source_meta, target_meta) {
             (Some(source_time), Some(target_time)) if source_time > target_time => {
