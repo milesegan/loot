@@ -2,7 +2,7 @@ use filetime::FileTime;
 use globwalk::DirEntry;
 use rayon::prelude::*;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::tag;
 
@@ -11,6 +11,18 @@ pub enum TranscodeFormat {
     Aac,
     Opus,
     Mp3,
+}
+
+fn touch_parents(path: &Path) -> Result<(), std::io::Error> {
+    let mut current_path = PathBuf::new();
+    let now = FileTime::now();
+    for component in path.components() {
+        current_path.push(component);
+        if let Some(parent) = current_path.parent() {
+            let _ = filetime::set_file_mtime(parent, now);
+        }
+    }
+    Ok(())
 }
 
 fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::io::Result<()> {
@@ -84,6 +96,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
 
     let mtime = FileTime::from_last_modification_time(&source_meta);
     filetime::set_file_mtime(dest, mtime)?;
+    touch_parents(dest)?;
 
     return Ok(());
 }
