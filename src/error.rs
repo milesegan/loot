@@ -1,3 +1,5 @@
+use lofty::error::LoftyError;
+
 #[derive(Debug)]
 pub enum AppError {
     IoError,
@@ -20,8 +22,8 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-impl From<lofty::LoftyError> for AppError {
-    fn from(_err: lofty::LoftyError) -> AppError {
+impl From<LoftyError> for AppError {
+    fn from(_err: LoftyError) -> AppError {
         AppError::ReadTagError
     }
 }

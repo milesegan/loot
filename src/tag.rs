@@ -1,6 +1,12 @@
 use std::path::Path;
 
-use lofty::{read_from_path, ItemKey, Probe, Tag, TagExt, TaggedFileExt};
+use lofty::{
+    config::WriteOptions,
+    file::TaggedFileExt,
+    probe::Probe,
+    read_from_path,
+    tag::{ItemKey, Tag, TagExt},
+};
 
 use crate::error::{AppError, Result};
 
@@ -22,7 +28,7 @@ pub fn copy(src: &Path, dest: &Path) -> Result<()> {
     if let Some(publisher) = src_tag.get_string(&ItemKey::Publisher) {
         dest_tag.insert_text(ItemKey::ContentGroup, publisher.to_string());
     }
-    match dest_tag.save_to_path(dest) {
+    match dest_tag.save_to_path(dest, WriteOptions::new()) {
         Err(e) => {
             println!("{:?}", e);
             Err(AppError::WriteTagError)

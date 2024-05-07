@@ -1,4 +1,4 @@
-use lofty::Accessor;
+use lofty::tag::{Accessor, ItemKey};
 use rayon::prelude::*;
 use regex::Regex;
 use std::path::Path;
@@ -25,7 +25,7 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
         .and_then(|e| e.to_str())
         .ok_or(AppError::PathError)?;
 
-    let album_artist = tag.get_string(&lofty::ItemKey::AlbumArtist);
+    let album_artist = tag.get_string(&ItemKey::AlbumArtist);
     let tidy_artist = tidy_string(album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")));
 
     let nice_dir = base
