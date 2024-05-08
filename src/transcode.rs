@@ -27,7 +27,8 @@ fn touch_parents(path: &Path) -> Result<(), std::io::Error> {
 
 fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::io::Result<()> {
     fs::remove_file(dest).ok();
-    let tmp = tempfile::NamedTempFile::new()?;
+    let mut tmp = PathBuf::from(dest);
+    tmp.set_extension("tmp");
     let source_meta = fs::metadata(source)?;
 
     let child = match format {
@@ -42,10 +43,10 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("-map")
             .arg("a:0")
             .arg("-b:a")
-            .arg("128k")
+            .arg("96k")
             .arg("-f")
             .arg("opus")
-            .arg(tmp.path())
+            .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
         TranscodeFormat::Aac => std::process::Command::new("afconvert")
@@ -61,7 +62,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             // .arg("45") ~ 96
             .arg("64") // ~ 128
             .arg(source)
-            .arg(tmp.path())
+            .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
         TranscodeFormat::Mp3 => std::process::Command::new("ffmpeg")
@@ -82,13 +83,13 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("5")
             .arg("-f")
             .arg("mp3")
-            .arg(tmp.path())
+            .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
     };
     child.wait_with_output().expect("failed to wait on child");
     fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
-    fs::rename(tmp.path(), dest).expect("Error moving file");
+    fs::rename(tmp.as_path(), dest).expect("Error moving file");
     match format {
         TranscodeFormat::Aac => tag::copy(source, dest).expect("Error copying tag"),
         _ => (),
