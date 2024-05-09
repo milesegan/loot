@@ -96,6 +96,11 @@ fn main() {
 
     if let Some(transcode) = matches.subcommand_matches("transcode-aac") {
         let dry_run = transcode.args.contains_key("dry-run");
+        prune::prune(
+            &transcode.args["source_path"].vals[0].to_str().unwrap(),
+            &transcode.args["dest_path"].vals[0].to_str().unwrap(),
+            dry_run,
+        );
         transcode::transcode(
             &transcode.args["source_path"].vals[0].to_str().unwrap(),
             &transcode.args["dest_path"].vals[0].to_str().unwrap(),
@@ -106,6 +111,11 @@ fn main() {
 
     if let Some(transcode) = matches.subcommand_matches("transcode-opus") {
         let dry_run = transcode.args.contains_key("dry-run");
+        prune::prune(
+            &transcode.args["source_path"].vals[0].to_str().unwrap(),
+            &transcode.args["dest_path"].vals[0].to_str().unwrap(),
+            dry_run,
+        );
         transcode::transcode(
             &transcode.args["source_path"].vals[0].to_str().unwrap(),
             &transcode.args["dest_path"].vals[0].to_str().unwrap(),
@@ -116,6 +126,11 @@ fn main() {
 
     if let Some(transcode) = matches.subcommand_matches("transcode-mp3") {
         let dry_run = transcode.args.contains_key("dry-run");
+        prune::prune(
+            &transcode.args["source_path"].vals[0].to_str().unwrap(),
+            &transcode.args["dest_path"].vals[0].to_str().unwrap(),
+            dry_run,
+        );
         transcode::transcode(
             &transcode.args["source_path"].vals[0].to_str().unwrap(),
             &transcode.args["dest_path"].vals[0].to_str().unwrap(),
