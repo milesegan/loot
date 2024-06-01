@@ -3,6 +3,7 @@ use globwalk::DirEntry;
 use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 use crate::tag;
 
@@ -23,6 +24,12 @@ fn touch_parents(path: &Path) -> Result<(), std::io::Error> {
         }
     }
     Ok(())
+}
+
+fn round_time(time: SystemTime) -> u128 {
+    time.duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or(Duration::from_secs(0))
+        .as_millis()
 }
 
 fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::io::Result<()> {
@@ -162,9 +169,11 @@ pub fn transcode(source_path: &str, dest_dir: &str, dry_run: bool, format: Trans
         };
         let target_meta = target.metadata().and_then(|m| m.modified()).ok();
         match (source_meta, target_meta) {
-            (Some(source_time), Some(target_time)) if source_time > target_time => {
+            (Some(source_time), Some(target_time))
+                if round_time(source_time) > round_time(target_time) =>
+            {
                 if dry_run {
-                    println!("{}", target.to_string_lossy());
+                    println!("{}", target.to_string_lossy(),);
                 } else {
                     println!("{}", relative.to_string_lossy());
                     transcode_file(entry.path(), &target, format).expect("Error transcoding");
