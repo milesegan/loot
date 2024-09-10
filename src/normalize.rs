@@ -25,8 +25,16 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
         .and_then(|e| e.to_str())
         .ok_or(AppError::PathError)?;
 
+    let is_compilation = tag
+        .get_string(&ItemKey::FlagCompilation)
+        .unwrap_or("")
+        .eq("1");
     let album_artist = tag.get_string(&ItemKey::AlbumArtist);
-    let tidy_artist = tidy_string(album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")));
+    let tidy_artist = if is_compilation {
+        "various".to_string()
+    } else {
+        tidy_string(album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")))
+    };
 
     let nice_dir = base
         .join(the_regex.replace_all(&tidy_artist, "").into_owned())
