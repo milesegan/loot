@@ -28,6 +28,9 @@ pub fn copy(src: &Path, dest: &Path) -> Result<()> {
     if let Some(publisher) = src_tag.get_string(&ItemKey::Publisher) {
         dest_tag.insert_text(ItemKey::ContentGroup, publisher.to_string());
     }
+    if let Some(compilation) = src_tag.get_string(&ItemKey::FlagCompilation) {
+        dest_tag.insert_text(ItemKey::FlagCompilation, compilation.to_string());
+    }
     match dest_tag.save_to_path(dest, WriteOptions::new()) {
         Err(e) => {
             println!("{:?}", e);
