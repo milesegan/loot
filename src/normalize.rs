@@ -72,7 +72,7 @@ pub fn normalize(path: &std::ffi::OsString, dry_run: bool) {
     let canonical = Path::new(path).canonicalize().expect("Invalid path.");
     println!("processing {}", canonical.to_string_lossy());
 
-    let pattern = format!("{}/**/*.{{flac,opus}}", canonical.to_string_lossy());
+    let pattern = format!("{}/**/*.{{flac,opus,m4a,mp3}}", canonical.to_string_lossy());
     globwalk::glob(pattern)
         .expect("Glob error.")
         .filter_map(|e| e.ok())
