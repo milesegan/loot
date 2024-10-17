@@ -7,8 +7,8 @@ mod tag;
 mod transcode;
 
 fn main() {
-    let matches = App::new("frust")
-        .version("1.0")
+    let matches = App::new("loot")
+        .version("0.8.0")
         .subcommand(
             SubCommand::with_name("norm")
                 .about("Normalize file paths.")
