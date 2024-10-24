@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand};
+use transcode::TranscodeFormat;
 
 mod error;
 mod normalize;
@@ -19,6 +20,8 @@ enum Commands {
     /// Adds files to myapp
     Norm(NormArgs),
     TranscodeAac(TranscodeArgs),
+    TranscodeMp3(TranscodeArgs),
+    TranscodeOpus(TranscodeArgs),
 }
 
 #[derive(Args)]
@@ -32,8 +35,18 @@ struct NormArgs {
 struct TranscodeArgs {
     #[arg(short, long)]
     dry_run: bool,
-    source: String,
-    destination: String,
+    paths: Vec<String>,
+}
+
+fn transcode(args: &TranscodeArgs, format: TranscodeFormat) {
+    if args.paths.len() < 2 {
+        println!("At least two paths required.")
+    } else {
+        if let Some((dest, sources)) = args.paths.split_last() {
+            prune::prune(sources, dest, args.dry_run);
+            transcode::transcode(sources, dest, args.dry_run, format)
+        }
+    }
 }
 
 fn main() {
@@ -44,13 +57,13 @@ fn main() {
             normalize::normalize(&args.path, args.dry_run);
         }
         Commands::TranscodeAac(args) => {
-            prune::prune(&args.source, &args.destination, args.dry_run);
-            transcode::transcode(
-                &args.source,
-                &args.destination,
-                args.dry_run,
-                transcode::TranscodeFormat::Aac,
-            )
+            transcode(args, TranscodeFormat::Aac);
+        }
+        Commands::TranscodeMp3(args) => {
+            transcode(args, TranscodeFormat::Mp3);
+        }
+        Commands::TranscodeOpus(args) => {
+            transcode(args, TranscodeFormat::Opus);
         }
     }
 
