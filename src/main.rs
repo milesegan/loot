@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{Args, Parser, Subcommand};
 
 mod error;
 mod normalize;
@@ -6,7 +6,55 @@ mod prune;
 mod tag;
 mod transcode;
 
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Adds files to myapp
+    Norm(NormArgs),
+    TranscodeAac(TranscodeArgs),
+}
+
+#[derive(Args)]
+struct NormArgs {
+    #[arg(short, long)]
+    dry_run: bool,
+    path: String,
+}
+
+#[derive(Args)]
+struct TranscodeArgs {
+    #[arg(short, long)]
+    dry_run: bool,
+    source: String,
+    destination: String,
+}
+
 fn main() {
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Commands::Norm(args) => {
+            normalize::normalize(&args.path, args.dry_run);
+        }
+        Commands::TranscodeAac(args) => {
+            prune::prune(&args.source, &args.destination, args.dry_run);
+            transcode::transcode(
+                &args.source,
+                &args.destination,
+                args.dry_run,
+                transcode::TranscodeFormat::Aac,
+            )
+        }
+    }
+
+    /*
     let matches = App::new("loot")
         .version("0.8.0")
         .subcommand(
@@ -147,4 +195,5 @@ fn main() {
             dry_run,
         )
     }
+    */
 }

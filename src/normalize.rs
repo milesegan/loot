@@ -68,7 +68,7 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     return Ok(());
 }
 
-pub fn normalize(path: &std::ffi::OsString, dry_run: bool) {
+pub fn normalize(path: &String, dry_run: bool) {
     let canonical = Path::new(path).canonicalize().expect("Invalid path.");
     println!("processing {}", canonical.to_string_lossy());
 
