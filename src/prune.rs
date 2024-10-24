@@ -15,12 +15,13 @@ pub fn prune(source_dirs: &[String], dest_dir: &str, dry_run: bool) {
                 let source_path = Path::new(source_dir);
                 let relative = entry.path().strip_prefix(dest_dir).expect("Not a prefix");
                 let source = source_path.join(relative).with_extension("flac");
-                if !source.exists() {
-                    println!("{:?}", entry.path());
-                    if !dry_run {
-                        std::fs::remove_file(entry.path()).ok();
-                    }
+                if source.exists() {
+                    return;
                 }
+            }
+            println!("{:?}", entry.path());
+            if !dry_run {
+                std::fs::remove_file(entry.path()).ok();
             }
         });
 }
