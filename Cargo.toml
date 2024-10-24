@@ -1,6 +1,6 @@
 [package]
 name = "loot"
-version = "0.8.0"
+version = "1.0.0"
 authors = ["Miles Egan <miles@plastaq.com>"]
 edition = "2018"
 
@@ -15,4 +15,4 @@ tempfile = "~3"
 rayon = "~1"
 lofty = "~0"
 filetime = "~0"
-clap = { version = "4.5.20", features = ["derive"] }
+clap = { version = "~4", features = ["derive"] }
