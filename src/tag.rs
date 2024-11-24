@@ -1,24 +1,25 @@
 use std::path::Path;
 
 use lofty::{
-    config::WriteOptions,
+    config::{ParseOptions, ParsingMode, WriteOptions},
     file::TaggedFileExt,
     probe::Probe,
-    read_from_path,
     tag::{ItemKey, Tag, TagExt},
 };
 
 use crate::error::{AppError, Result};
 
 pub fn read(path: &Path) -> Result<Tag> {
-    let tagged_file = read_from_path(path)?;
+    let parsing_options = ParseOptions::new()
+        .parsing_mode(ParsingMode::Relaxed)
+        .read_cover_art(false);
+    let tagged_file = Probe::open(path)?.options(parsing_options).read()?;
     let tag = tagged_file.primary_tag().ok_or(AppError::ReadTagError)?;
     return Ok(tag.to_owned());
 }
 
 pub fn copy(src: &Path, dest: &Path) -> Result<()> {
-    let tagged_file = read_from_path(src)?;
-    let src_tag = tagged_file.primary_tag().ok_or(AppError::ReadTagError)?;
+    let src_tag = read(src)?;
 
     let mut dest_file = Probe::open(&dest)?.read()?;
     let dest_tag = dest_file.primary_tag_mut().ok_or(AppError::WriteTagError)?;
