@@ -50,7 +50,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("-map")
             .arg("a:0")
             .arg("-b:a")
-            .arg("192k")
+            .arg("128k")
             .arg("-f")
             .arg("opus")
             .arg(tmp.as_path())
