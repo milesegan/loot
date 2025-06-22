@@ -2,6 +2,7 @@ use clap::{Args, Parser, Subcommand};
 use transcode::TranscodeFormat;
 
 mod error;
+mod index;
 mod normalize;
 mod prune;
 mod tag;
@@ -17,11 +18,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Adds files to myapp
+    /// Normalize file and directory names
     Norm(NormArgs),
+    /// Remove duplicate files from destination directory
     Prune(PruneArgs),
+    /// Create a JSON index of audio files with metadata
+    Index(IndexArgs),
+    /// Transcode audio files to AAC format
     TranscodeAac(TranscodeArgs),
+    /// Transcode audio files to MP3 format
     TranscodeMp3(TranscodeArgs),
+    /// Transcode audio files to Opus format
     TranscodeOpus(TranscodeArgs),
 }
 
@@ -44,6 +51,13 @@ struct TranscodeArgs {
     #[arg(short, long)]
     dry_run: bool,
     paths: Vec<String>,
+}
+
+#[derive(Args)]
+struct IndexArgs {
+    #[arg(short, long)]
+    dry_run: bool,
+    path: String,
 }
 
 fn transcode(args: &TranscodeArgs, format: TranscodeFormat) {
@@ -72,6 +86,9 @@ fn main() {
                     prune::prune(sources, dest, args.dry_run);
                 }
             }
+        }
+        Commands::Index(args) => {
+            index::index_directory(&args.path, args.dry_run);
         }
         Commands::TranscodeAac(args) => {
             transcode(args, TranscodeFormat::Aac);
