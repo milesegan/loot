@@ -28,7 +28,7 @@ pub fn configure_thread_pool() {
         });
 }
 
-pub fn index_directory(directory: &str, dry_run: bool) {
+pub fn index_directory(directory: &str, dry_run: bool, force: bool) {
     // Configure thread pool for optimal performance
     configure_thread_pool();
     let dir_path = Path::new(directory);
@@ -139,8 +139,17 @@ pub fn index_directory(directory: &str, dry_run: bool) {
         }
     } else {
         // Identify files to process
-        let (files_to_process, files_to_remove) =
-            identify_changes(&existing_tracks, &current_files);
+        let (files_to_process, files_to_remove) = if force {
+            // Force mode: process all files and clear existing index
+            println!(
+                "{} Force mode: regenerating entire index",
+                "⚡".bright_yellow().bold()
+            );
+            existing_tracks.clear();
+            (current_files.clone(), HashSet::new())
+        } else {
+            identify_changes(&existing_tracks, &current_files)
+        };
 
         println!(
             "{} Files to process: {}",
@@ -442,7 +451,7 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
             metadata.insert("grouping".to_string(), json!(grouping));
         }
 
-        if let Some(label) = tag.get_string(&ItemKey::Publisher) {
+        if let Some(label) = tag.get_string(&ItemKey::Label) {
             metadata.insert("label".to_string(), json!(label));
         }
 

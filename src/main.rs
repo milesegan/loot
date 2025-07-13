@@ -57,6 +57,8 @@ struct TranscodeArgs {
 struct IndexArgs {
     #[arg(short, long)]
     dry_run: bool,
+    #[arg(short, long)]
+    force: bool,
     path: String,
 }
 
@@ -88,7 +90,7 @@ fn main() {
             }
         }
         Commands::Index(args) => {
-            index::index_directory(&args.path, args.dry_run);
+            index::index_directory(&args.path, args.dry_run, args.force);
         }
         Commands::TranscodeAac(args) => {
             transcode(args, TranscodeFormat::Aac);
