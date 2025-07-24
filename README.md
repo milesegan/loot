@@ -1,6 +1,7 @@
 # Loot
 
-This is a simple tool to help manage libraries of music files.
+This is a simple tool to help manage libraries of music files. It needs a working ffmpeg installation to do
+most of its work.
 
 ## Subcommands
 
