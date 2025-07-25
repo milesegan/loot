@@ -10,6 +10,7 @@ use crate::tag;
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
     Aac,
+    AacCbr,
     Opus,
     Mp3,
 }
@@ -72,6 +73,19 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
+        TranscodeFormat::AacCbr => std::process::Command::new("afconvert")
+            .arg("-d")
+            .arg("aac")
+            .arg("-f")
+            .arg("m4af")
+            .arg("-s")
+            .arg("0")
+            .arg("-b")
+            .arg("256000")
+            .arg(source)
+            .arg(tmp.as_path())
+            .spawn()
+            .expect("failed to execute child"),
         TranscodeFormat::Mp3 => std::process::Command::new("ffmpeg")
             .arg("-y")
             .arg("-loglevel")
@@ -98,7 +112,8 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
     fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
     fs::rename(tmp.as_path(), dest).expect("Error moving file");
     match format {
-        TranscodeFormat::Aac => tag::copy(source, dest).expect("Error copying tag"),
+        TranscodeFormat::Aac => tag::copy(source, dest, false).expect("Error copying tag"),
+        TranscodeFormat::AacCbr => tag::copy(source, dest, true).expect("Error copying tag"),
         _ => (),
     }
 
@@ -178,6 +193,7 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
             }
             let target = match format {
                 TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
+                TranscodeFormat::AacCbr => dest_path.join(relative).with_extension("m4a"),
                 TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };

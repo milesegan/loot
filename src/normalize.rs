@@ -18,7 +18,7 @@ fn tidy_string(string: &str) -> String {
 fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     let the_regex = Regex::new(r#"^the "#).unwrap();
 
-    let tag = tag::read(path)?;
+    let tag = tag::read(path, false)?;
 
     let extension = path
         .extension()

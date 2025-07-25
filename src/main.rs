@@ -26,6 +26,8 @@ enum Commands {
     Index(IndexArgs),
     /// Transcode audio files to AAC format
     TranscodeAac(TranscodeArgs),
+    /// Transcode audio files to AAC format at 256kbps
+    TranscodeAacCBR(TranscodeArgs),
     /// Transcode audio files to MP3 format
     TranscodeMp3(TranscodeArgs),
     /// Transcode audio files to Opus format
@@ -94,6 +96,9 @@ fn main() {
         }
         Commands::TranscodeAac(args) => {
             transcode(args, TranscodeFormat::Aac);
+        }
+        Commands::TranscodeAacCBR(args) => {
+            transcode(args, TranscodeFormat::AacCbr);
         }
         Commands::TranscodeMp3(args) => {
             transcode(args, TranscodeFormat::Mp3);
