@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use crate::tag;
+use indicatif::{ProgressBar, ProgressStyle};
+use std::sync::Arc;
 
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
@@ -169,7 +171,23 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
             .into_iter()
             .collect::<Vec<DirEntry>>();
         matches.sort_by(|a, b| a.path().cmp(b.path()));
-        matches.into_iter().par_bridge().for_each(|entry| {
+
+        // Collect all files to process
+        let files_to_process = matches;
+        let total = files_to_process.len() as u64;
+        let pb = Arc::new(ProgressBar::new(total));
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
+                )
+                .unwrap()
+                .progress_chars("█▉▊▋▌▍▎▏  "),
+        );
+        pb.set_message("Transcoding...");
+
+        let pb_clone = pb.clone();
+        files_to_process.into_par_iter().for_each(|entry| {
             let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
             let relative = entry
                 .path()
@@ -198,23 +216,28 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };
             let target_meta = target.metadata().and_then(|m| m.modified()).ok();
+            let file_display = relative.to_string_lossy();
             match (source_meta, target_meta) {
                 (Some(source_time), Some(target_time))
                     if round_time(source_time) > round_time(target_time) =>
                 {
                     if dry_run {
-                        println!("{}", target.to_string_lossy(),);
+                        pb_clone.set_message(format!("{}", file_display));
+                        pb_clone.inc(1);
                     } else {
-                        println!("{}", relative.to_string_lossy());
+                        pb_clone.set_message(format!("{}", file_display));
                         transcode_file(entry.path(), &target, format).expect("Error transcoding");
+                        pb_clone.inc(1);
                     }
                 }
                 (Some(_), None) => {
                     if dry_run {
-                        println!("{}", target.to_string_lossy());
+                        pb_clone.set_message(format!("{}", file_display));
+                        pb_clone.inc(1);
                     } else {
-                        println!("{}", relative.to_string_lossy());
+                        pb_clone.set_message(format!("{}", file_display));
                         transcode_file(entry.path(), &target, format).expect("Error transcoding");
+                        pb_clone.inc(1);
                     }
                 }
                 _ => {
@@ -222,5 +245,6 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
                 }
             }
         });
+        pb.finish_with_message("Done");
     }
 }
