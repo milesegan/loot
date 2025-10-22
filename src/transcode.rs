@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub enum TranscodeFormat {
     Aac,
     AacCbr,
-    Opus,
+    Opus { bitrate_kbps: u32 },
     Mp3,
 }
 
@@ -42,7 +42,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
     let source_meta = fs::metadata(source)?;
 
     let child = match format {
-        TranscodeFormat::Opus => std::process::Command::new("ffmpeg")
+        TranscodeFormat::Opus { bitrate_kbps } => std::process::Command::new("ffmpeg")
             .arg("-y")
             .arg("-loglevel")
             .arg("quiet")
@@ -53,7 +53,7 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg("-map")
             .arg("a:0")
             .arg("-b:a")
-            .arg("192k")
+            .arg(format!("{}k", bitrate_kbps))
             .arg("-f")
             .arg("opus")
             .arg(tmp.as_path())
@@ -212,7 +212,7 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
             let target = match format {
                 TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
                 TranscodeFormat::AacCbr => dest_path.join(relative).with_extension("m4a"),
-                TranscodeFormat::Opus => dest_path.join(relative).with_extension("opus"),
+                TranscodeFormat::Opus { .. } => dest_path.join(relative).with_extension("opus"),
                 TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
             };
             let target_meta = target.metadata().and_then(|m| m.modified()).ok();

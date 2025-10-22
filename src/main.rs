@@ -31,7 +31,7 @@ enum Commands {
     /// Transcode audio files to MP3 format
     TranscodeMp3(TranscodeArgs),
     /// Transcode audio files to Opus format
-    TranscodeOpus(TranscodeArgs),
+    TranscodeOpus(TranscodeOpusArgs),
 }
 
 #[derive(Args)]
@@ -53,6 +53,14 @@ struct TranscodeArgs {
     #[arg(short, long)]
     dry_run: bool,
     paths: Vec<String>,
+}
+
+#[derive(Args)]
+struct TranscodeOpusArgs {
+    #[command(flatten)]
+    shared: TranscodeArgs,
+    #[arg(short, long, default_value_t = 128, value_name = "KBPS")]
+    bitrate: u32,
 }
 
 #[derive(Args)]
@@ -104,7 +112,12 @@ fn main() {
             transcode(args, TranscodeFormat::Mp3);
         }
         Commands::TranscodeOpus(args) => {
-            transcode(args, TranscodeFormat::Opus);
+            transcode(
+                &args.shared,
+                TranscodeFormat::Opus {
+                    bitrate_kbps: args.bitrate,
+                },
+            );
         }
     }
 }

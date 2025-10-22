@@ -121,10 +121,11 @@ Transcode audio files to Opus format.
 **Usage:**
 
 ```
-loot transcode-opus [--dry-run] <source1> <source2> ... <destination>
+loot transcode-opus [--dry-run] [--bitrate <KBPS>] <source1> <source2> ... <destination>
 ```
 
 - `--dry-run`, `-d`: Show what would be transcoded, but do not write files.
+- `--bitrate`, `-b`: Target Opus bitrate in kbps (defaults to `128`).
 - `<source1> <source2> ...`: One or more source directories (must be at least one).
 - `<destination>`: Destination directory for transcoded files.
 
