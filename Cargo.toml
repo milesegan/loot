@@ -1,6 +1,6 @@
 [package]
 name = "loot"
-version = "1.7.0"
+version = "1.8.0"
 authors = ["Miles Egan <miles@plastaq.com>"]
 edition = "2018"
 
