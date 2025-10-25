@@ -364,6 +364,7 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
     let properties = tagged_file.properties();
 
     let mut metadata = Map::new();
+    metadata.insert("compilation".to_string(), json!(false));
 
     // Add required fields that match Track type
 
@@ -394,6 +395,14 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
 
     // Tag metadata - only add fields that have values
     if let Some(tag) = tag {
+        if let Some(compilation_flag) = tag.get_string(&ItemKey::FlagCompilation) {
+            let normalized = compilation_flag.trim();
+            let is_compilation = normalized == "1"
+                || normalized.eq_ignore_ascii_case("true")
+                || normalized.eq_ignore_ascii_case("yes");
+            metadata.insert("compilation".to_string(), json!(is_compilation));
+        }
+
         // Required fields (album, artist) - add empty strings if missing
         let album = tag.album().map(|s| s.to_string()).unwrap_or_default();
         let artist = tag.artist().map(|s| s.to_string()).unwrap_or_default();
