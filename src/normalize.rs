@@ -9,8 +9,12 @@ use crate::tag;
 fn tidy_string(string: &str) -> String {
     let tidied = string.trim();
     let no_diacritics = deunicode::deunicode_with_tofu(&tidied, "_").to_lowercase();
-    let remove_regex = Regex::new(r#"["&,;.'(){}|:*!"-/?#><]"#).unwrap();
-    let removed = remove_regex.replace_all(&no_diacritics, "").into_owned();
+    let slash_regex = Regex::new(r#"[/\\]+"#).unwrap();
+    let escaped_slashes = slash_regex.replace_all(&no_diacritics, " ").into_owned();
+    let remove_regex = Regex::new(r#"["&,;.'(){}|:*!?#><-]"#).unwrap();
+    let removed = remove_regex
+        .replace_all(&escaped_slashes, "")
+        .into_owned();
     let replace_regex = Regex::new(r#"[ ~]+"#).unwrap();
     return replace_regex.replace_all(&removed, "_").into_owned();
 }
@@ -84,4 +88,19 @@ pub fn normalize(path: &String, dry_run: bool) {
                 Err(_) => eprintln!("Error reading tag: {}", entry.path().to_string_lossy()),
             },
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tidy_string;
+
+    #[test]
+    fn tidy_string_escapes_forward_slashes() {
+        assert_eq!(tidy_string("AC/DC"), "ac_dc");
+    }
+
+    #[test]
+    fn tidy_string_escapes_backward_slashes() {
+        assert_eq!(tidy_string(r#"Live\Demo"#), "live_demo");
+    }
 }
