@@ -395,7 +395,7 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
 
     // Tag metadata - only add fields that have values
     if let Some(tag) = tag {
-        if let Some(compilation_flag) = tag.get_string(&ItemKey::FlagCompilation) {
+        if let Some(compilation_flag) = tag.get_string(ItemKey::FlagCompilation) {
             let normalized = compilation_flag.trim();
             let is_compilation = normalized == "1"
                 || normalized.eq_ignore_ascii_case("true")
@@ -415,11 +415,11 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
             metadata.insert("title".to_string(), json!(title.to_string()));
         }
 
-        if let Some(album_artist) = tag.get_string(&ItemKey::AlbumArtist) {
+        if let Some(album_artist) = tag.get_string(ItemKey::AlbumArtist) {
             metadata.insert("albumArtist".to_string(), json!(album_artist));
         }
 
-        if let Some(composer) = tag.get_string(&ItemKey::Composer) {
+        if let Some(composer) = tag.get_string(ItemKey::Composer) {
             metadata.insert("composer".to_string(), json!(composer));
         }
 
@@ -427,8 +427,8 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
             metadata.insert("genre".to_string(), json!(genre.to_string()));
         }
 
-        if let Some(year) = tag.year() {
-            metadata.insert("year".to_string(), json!(year));
+        if let Some(date) = tag.date() {
+            metadata.insert("year".to_string(), json!(date.year));
         }
 
         if let Some(track) = tag.track() {
@@ -448,19 +448,19 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
         }
 
         // Additional fields that might be available - using ItemKey for fields not in standard API
-        if let Some(performer) = tag.get_string(&ItemKey::Performer) {
+        if let Some(performer) = tag.get_string(ItemKey::Performer) {
             metadata.insert("performer".to_string(), json!(performer));
         }
 
-        if let Some(work) = tag.get_string(&ItemKey::Work) {
+        if let Some(work) = tag.get_string(ItemKey::Work) {
             metadata.insert("work".to_string(), json!(work));
         }
 
-        if let Some(grouping) = tag.get_string(&ItemKey::ContentGroup) {
+        if let Some(grouping) = tag.get_string(ItemKey::ContentGroup) {
             metadata.insert("grouping".to_string(), json!(grouping));
         }
 
-        if let Some(label) = tag.get_string(&ItemKey::Label) {
+        if let Some(label) = tag.get_string(ItemKey::Label) {
             metadata.insert("label".to_string(), json!(label));
         }
 

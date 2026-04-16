@@ -30,10 +30,10 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
         .ok_or(AppError::PathError)?;
 
     let is_compilation = tag
-        .get_string(&ItemKey::FlagCompilation)
+        .get_string(ItemKey::FlagCompilation)
         .unwrap_or("")
         .eq("1");
-    let album_artist = tag.get_string(&ItemKey::AlbumArtist);
+    let album_artist = tag.get_string(ItemKey::AlbumArtist);
     let tidy_artist = if is_compilation {
         "various".to_string()
     } else {

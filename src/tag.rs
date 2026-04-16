@@ -26,13 +26,13 @@ pub fn copy(src: &Path, dest: &Path, copy_cover: bool) -> Result<()> {
     for item in src_tag.items() {
         dest_tag.push(item.clone());
     }
-    if let Some(publisher) = src_tag.get_string(&ItemKey::Publisher) {
+    if let Some(publisher) = src_tag.get_string(ItemKey::Publisher) {
         dest_tag.insert_text(ItemKey::ContentGroup, publisher.to_string());
     }
-    if let Some(compilation) = src_tag.get_string(&ItemKey::FlagCompilation) {
+    if let Some(compilation) = src_tag.get_string(ItemKey::FlagCompilation) {
         dest_tag.insert_text(ItemKey::FlagCompilation, compilation.to_string());
     }
-    if let Some(work) = src_tag.get_string(&ItemKey::Work) {
+    if let Some(work) = src_tag.get_string(ItemKey::Work) {
         dest_tag.insert_text(ItemKey::Work, work.to_string());
     }
     if copy_cover {
