@@ -1,11 +1,14 @@
 use clap::{Args, Parser, Subcommand};
 use transcode::TranscodeFormat;
 
+mod cli;
 mod error;
+mod fs_utils;
 mod index;
 mod normalize;
 mod prune;
 mod tag;
+mod text;
 mod transcode;
 
 #[derive(Parser)]
@@ -72,14 +75,20 @@ struct IndexArgs {
     path: String,
 }
 
-fn transcode(args: &TranscodeArgs, format: TranscodeFormat) {
-    if args.paths.len() < 2 {
-        println!("At least two paths required.")
+fn run_prune(paths: &[String], dry_run: bool) {
+    if let Some((sources, dest)) = cli::split_sources_and_dest(paths) {
+        prune::prune(sources, dest, dry_run);
     } else {
-        if let Some((dest, sources)) = args.paths.split_last() {
-            prune::prune(sources, dest, args.dry_run);
-            transcode::transcode(sources, dest, args.dry_run, format)
-        }
+        eprintln!("At least two paths required.");
+    }
+}
+
+fn transcode(args: &TranscodeArgs, format: TranscodeFormat) {
+    if let Some((sources, dest)) = cli::split_sources_and_dest(&args.paths) {
+        prune::prune(sources, dest, args.dry_run);
+        transcode::transcode(sources, dest, args.dry_run, format)
+    } else {
+        eprintln!("At least two paths required.");
     }
 }
 
@@ -91,13 +100,7 @@ fn main() {
             normalize::normalize(&args.path, args.dry_run);
         }
         Commands::Prune(args) => {
-            if args.paths.len() < 2 {
-                println!("At least two paths required.")
-            } else {
-                if let Some((dest, sources)) = args.paths.split_last() {
-                    prune::prune(sources, dest, args.dry_run);
-                }
-            }
+            run_prune(&args.paths, args.dry_run);
         }
         Commands::Index(args) => {
             index::index_directory(&args.path, args.dry_run, args.force);

@@ -10,9 +10,11 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
-pub fn configure_thread_pool() {
+use crate::fs_utils::{relative_path_string, unix_timestamp_secs};
+
+fn configure_thread_pool() {
     // Configure rayon to use more threads for better parallelism
     // This is especially helpful for I/O bound operations
     let num_threads = std::thread::available_parallelism()
@@ -28,6 +30,7 @@ pub fn configure_thread_pool() {
         });
 }
 
+/// Scans a music directory and writes or previews an `index.json` metadata file.
 pub fn index_directory(directory: &str, dry_run: bool, force: bool) {
     // Configure thread pool for optimal performance
     configure_thread_pool();
@@ -96,11 +99,7 @@ pub fn index_directory(directory: &str, dry_run: bool, force: bool) {
             let mut files = Vec::new();
             for entry in walker.flatten() {
                 let file_path = entry.path();
-                let relative_path = file_path
-                    .strip_prefix(dir_path)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+                let relative_path = relative_path_string(dir_path, file_path).unwrap();
                 files.push((relative_path, file_path.to_path_buf()));
             }
             files
@@ -335,10 +334,7 @@ fn identify_changes(
             // File exists in index, check if it's been modified
             if let Some(stored_mtime) = existing_metadata.get("mtime") {
                 if let Some(stored_timestamp) = stored_mtime.as_u64() {
-                    let current_timestamp = current_mtime
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
+                    let current_timestamp = unix_timestamp_secs(*current_mtime);
                     current_timestamp != stored_timestamp
                 } else {
                     true // Invalid stored timestamp, reprocess
@@ -371,10 +367,7 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
     // Get file metadata for mtime and size
     if let Ok(file_metadata) = fs::metadata(file_path) {
         if let Ok(modified) = file_metadata.modified() {
-            let timestamp = modified
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+            let timestamp = unix_timestamp_secs(modified);
             metadata.insert("mtime".to_string(), json!(timestamp));
         }
         metadata.insert("size".to_string(), json!(file_metadata.len()));
@@ -469,4 +462,124 @@ fn extract_metadata(file_path: &Path) -> Result<Value, Box<dyn std::error::Error
     }
 
     Ok(Value::Object(metadata))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime};
+
+    use serde_json::json;
+    use tempfile::tempdir;
+
+    use super::{identify_changes, load_existing_index};
+
+    #[test]
+    fn load_existing_index_returns_empty_for_missing_file() {
+        let dir = tempdir().expect("tempdir");
+
+        let tracks = load_existing_index(&dir.path().join("index.json"));
+
+        assert!(tracks.is_empty());
+    }
+
+    #[test]
+    fn load_existing_index_reads_tracks_object() {
+        let dir = tempdir().expect("tempdir");
+        let index_path = dir.path().join("index.json");
+        fs::write(
+            &index_path,
+            serde_json::to_string(&json!({
+                "version": 1,
+                "tracks": {
+                    "Artist/Album/track.flac": { "album": "Album" }
+                }
+            }))
+            .expect("json"),
+        )
+        .expect("write");
+
+        let tracks = load_existing_index(&index_path);
+
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(
+            tracks.get("Artist/Album/track.flac"),
+            Some(&json!({ "album": "Album" }))
+        );
+    }
+
+    #[test]
+    fn identify_changes_detects_removed_new_and_modified_files() {
+        let existing_tracks = HashMap::from([
+            (
+                "Artist/Album/stale.flac".to_owned(),
+                json!({ "mtime": 10_u64 }),
+            ),
+            (
+                "Artist/Album/updated.flac".to_owned(),
+                json!({ "mtime": 10_u64 }),
+            ),
+            (
+                "Artist/Album/unchanged.flac".to_owned(),
+                json!({ "mtime": 20_u64 }),
+            ),
+        ]);
+
+        let current_files = HashMap::from([
+            (
+                "Artist/Album/updated.flac".to_owned(),
+                (
+                    PathBuf::from("/tmp/updated.flac"),
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(11),
+                ),
+            ),
+            (
+                "Artist/Album/unchanged.flac".to_owned(),
+                (
+                    PathBuf::from("/tmp/unchanged.flac"),
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(20),
+                ),
+            ),
+            (
+                "Artist/Album/new.flac".to_owned(),
+                (
+                    PathBuf::from("/tmp/new.flac"),
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(30),
+                ),
+            ),
+        ]);
+
+        let (files_to_process, files_to_remove) =
+            identify_changes(&existing_tracks, &current_files);
+
+        assert_eq!(files_to_remove.len(), 1);
+        assert!(files_to_remove.contains("Artist/Album/stale.flac"));
+        assert_eq!(files_to_process.len(), 2);
+        assert!(files_to_process.contains_key("Artist/Album/updated.flac"));
+        assert!(files_to_process.contains_key("Artist/Album/new.flac"));
+        assert!(!files_to_process.contains_key("Artist/Album/unchanged.flac"));
+    }
+
+    #[test]
+    fn identify_changes_reprocesses_invalid_stored_mtime() {
+        let existing_tracks = HashMap::from([(
+            "Artist/Album/track.flac".to_owned(),
+            json!({ "mtime": "bad-data" }),
+        )]);
+        let current_files = HashMap::from([(
+            "Artist/Album/track.flac".to_owned(),
+            (
+                PathBuf::from("/tmp/track.flac"),
+                SystemTime::UNIX_EPOCH + Duration::from_secs(10),
+            ),
+        )]);
+
+        let (files_to_process, files_to_remove) =
+            identify_changes(&existing_tracks, &current_files);
+
+        assert!(files_to_remove.is_empty());
+        assert!(files_to_process.contains_key("Artist/Album/track.flac"));
+    }
 }

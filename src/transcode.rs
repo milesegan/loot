@@ -5,16 +5,28 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use crate::fs_utils::{canonicalize_path, glob_pattern, modified_time};
 use crate::tag;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
 
+/// Supported lossy output formats for the transcode workflow.
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
     Aac,
     AacCbr,
     Opus { bitrate_kbps: u32 },
     Mp3,
+}
+
+fn target_path(dest_path: &Path, relative: &Path, format: TranscodeFormat) -> PathBuf {
+    match format {
+        TranscodeFormat::Aac | TranscodeFormat::AacCbr => {
+            dest_path.join(relative).with_extension("m4a")
+        }
+        TranscodeFormat::Opus { .. } => dest_path.join(relative).with_extension("opus"),
+        TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
+    }
 }
 
 fn touch_parents(path: &Path) -> Result<(), std::io::Error> {
@@ -142,16 +154,11 @@ fn extract_cover(source: &Path, dest: &Path) -> std::io::Result<()> {
     return Ok(());
 }
 
+/// Transcodes supported source files into a destination tree while preserving metadata.
 pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format: TranscodeFormat) {
     let canonicals = source_paths
-        .into_iter()
-        .map(|path| {
-            Path::new(path)
-                .canonicalize()
-                .expect("Invalid path.")
-                .as_path()
-                .to_owned()
-        })
+        .iter()
+        .map(canonicalize_path)
         .collect::<Vec<_>>();
 
     for canonical in &canonicals {
@@ -160,11 +167,8 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
     }
 
     let dest_path = Path::new(dest_dir);
-    for canonical_string in canonicals {
-        let pattern = format!(
-            "{}/**/*.{{flac,opus}}",
-            canonical_string.to_string_lossy().to_owned()
-        );
+    for canonical_path in canonicals {
+        let pattern = glob_pattern(&canonical_path, &["flac", "opus"]);
         let mut matches = globwalk::glob(&pattern)
             .expect("glob error")
             .filter_map(Result::ok)
@@ -188,16 +192,16 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
 
         let pb_clone = pb.clone();
         files_to_process.into_par_iter().for_each(|entry| {
-            let source_meta = entry.metadata().ok().and_then(|m| m.modified().ok());
+            let source_meta = modified_time(entry.path());
             let relative = entry
                 .path()
-                .strip_prefix(&canonical_string)
+                .strip_prefix(&canonical_path)
                 .expect("Not a prefix");
             let cover = dest_path
                 .join(relative)
                 .with_file_name("cover")
                 .with_extension("jpg");
-            let cover_meta = cover.metadata().and_then(|m| m.modified()).ok();
+            let cover_meta = modified_time(&cover);
             match (source_meta, cover_meta) {
                 (Some(source_time), Some(target_time)) if source_time > target_time => {
                     extract_cover(entry.path(), &cover).ok();
@@ -209,13 +213,8 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
                     // nothing
                 }
             }
-            let target = match format {
-                TranscodeFormat::Aac => dest_path.join(relative).with_extension("m4a"),
-                TranscodeFormat::AacCbr => dest_path.join(relative).with_extension("m4a"),
-                TranscodeFormat::Opus { .. } => dest_path.join(relative).with_extension("opus"),
-                TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
-            };
-            let target_meta = target.metadata().and_then(|m| m.modified()).ok();
+            let target = target_path(dest_path, relative, format);
+            let target_meta = modified_time(&target);
             let file_display = relative.to_string_lossy();
             match (source_meta, target_meta) {
                 (Some(source_time), Some(target_time))
@@ -246,5 +245,42 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
             }
         });
         pb.finish_with_message("Done");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use std::time::{Duration, SystemTime};
+
+    use super::{round_time, target_path, TranscodeFormat};
+
+    #[test]
+    fn target_path_uses_expected_extension_for_each_format() {
+        let dest = Path::new("/tmp/output");
+        let relative = Path::new("Artist/Album/track.flac");
+
+        assert_eq!(
+            target_path(dest, relative, TranscodeFormat::Aac),
+            dest.join("Artist/Album/track.m4a")
+        );
+        assert_eq!(
+            target_path(dest, relative, TranscodeFormat::AacCbr),
+            dest.join("Artist/Album/track.m4a")
+        );
+        assert_eq!(
+            target_path(dest, relative, TranscodeFormat::Opus { bitrate_kbps: 128 }),
+            dest.join("Artist/Album/track.opus")
+        );
+        assert_eq!(
+            target_path(dest, relative, TranscodeFormat::Mp3),
+            dest.join("Artist/Album/track.mp3")
+        );
+    }
+
+    #[test]
+    fn round_time_returns_epoch_milliseconds() {
+        let time = SystemTime::UNIX_EPOCH + Duration::from_millis(1234);
+        assert_eq!(round_time(time), 1234);
     }
 }

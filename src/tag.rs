@@ -9,6 +9,7 @@ use lofty::{
 
 use crate::error::{AppError, Result};
 
+/// Reads the primary tag from an audio file.
 pub fn read(path: &Path, read_cover: bool) -> Result<Tag> {
     let parsing_options = ParseOptions::new()
         .parsing_mode(ParsingMode::Relaxed)
@@ -18,6 +19,7 @@ pub fn read(path: &Path, read_cover: bool) -> Result<Tag> {
     return Ok(tag.to_owned());
 }
 
+/// Copies supported tag fields from `src` into an already-created destination file.
 pub fn copy(src: &Path, dest: &Path, copy_cover: bool) -> Result<()> {
     let src_tag = read(src, copy_cover)?;
 

@@ -1,27 +1,13 @@
 use lofty::tag::{Accessor, ItemKey};
 use rayon::prelude::*;
-use regex::Regex;
 use std::path::Path;
 
 use crate::error::{AppError, Result};
+use crate::fs_utils::{canonicalize_path, glob_pattern, relative_path_string};
 use crate::tag;
-
-fn tidy_string(string: &str) -> String {
-    let tidied = string.trim();
-    let no_diacritics = deunicode::deunicode_with_tofu(&tidied, "_").to_lowercase();
-    let slash_regex = Regex::new(r#"[/\\]+"#).unwrap();
-    let escaped_slashes = slash_regex.replace_all(&no_diacritics, " ").into_owned();
-    let remove_regex = Regex::new(r#"["&,;.'(){}|:*!?#><-]"#).unwrap();
-    let removed = remove_regex
-        .replace_all(&escaped_slashes, "")
-        .into_owned();
-    let replace_regex = Regex::new(r#"[ ~]+"#).unwrap();
-    return replace_regex.replace_all(&removed, "_").into_owned();
-}
+use crate::text::{strip_leading_the, tidy_string};
 
 fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
-    let the_regex = Regex::new(r#"^the "#).unwrap();
-
     let tag = tag::read(path, false)?;
 
     let extension = path
@@ -37,11 +23,13 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     let tidy_artist = if is_compilation {
         "various".to_string()
     } else {
-        tidy_string(album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")))
+        strip_leading_the(&tidy_string(
+            album_artist.unwrap_or(tag.artist().as_deref().unwrap_or("")),
+        ))
     };
 
     let nice_dir = base
-        .join(the_regex.replace_all(&tidy_artist, "").into_owned())
+        .join(&tidy_artist)
         .join(tidy_string(tag.album().as_deref().unwrap_or("")));
 
     let disc_prefix = tag
@@ -60,8 +48,8 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     if path != nice_path {
         println!(
             "{} -> {}",
-            path.strip_prefix(base)?.to_string_lossy(),
-            nice_path.strip_prefix(base)?.to_string_lossy()
+            relative_path_string(base, path)?,
+            relative_path_string(base, &nice_path)?
         );
         if !dry_run {
             std::fs::create_dir_all(&nice_dir)?;
@@ -72,11 +60,12 @@ fn process_file(base: &Path, path: &Path, dry_run: bool) -> Result<()> {
     return Ok(());
 }
 
-pub fn normalize(path: &String, dry_run: bool) {
-    let canonical = Path::new(path).canonicalize().expect("Invalid path.");
+/// Renames supported audio files into a normalized artist/album/track layout.
+pub fn normalize(path: &str, dry_run: bool) {
+    let canonical = canonicalize_path(path);
     println!("processing {}", canonical.to_string_lossy());
 
-    let pattern = format!("{}/**/*.{{flac,opus,m4a,mp3}}", canonical.to_string_lossy());
+    let pattern = glob_pattern(&canonical, &["flac", "opus", "m4a", "mp3"]);
     globwalk::glob(pattern)
         .expect("Glob error.")
         .filter_map(|e| e.ok())
@@ -88,19 +77,4 @@ pub fn normalize(path: &String, dry_run: bool) {
                 Err(_) => eprintln!("Error reading tag: {}", entry.path().to_string_lossy()),
             },
         )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::tidy_string;
-
-    #[test]
-    fn tidy_string_escapes_forward_slashes() {
-        assert_eq!(tidy_string("AC/DC"), "ac_dc");
-    }
-
-    #[test]
-    fn tidy_string_escapes_backward_slashes() {
-        assert_eq!(tidy_string(r#"Live\Demo"#), "live_demo");
-    }
 }
