@@ -1,5 +1,5 @@
-use clap::{Args, Parser, Subcommand};
-use transcode::TranscodeFormat;
+use clap::{Args, Parser, Subcommand, ValueEnum};
+use transcode::{AacBitrateMode, TranscodeFormat};
 
 mod cli;
 mod error;
@@ -28,7 +28,7 @@ enum Commands {
     /// Create a JSON index of audio files with metadata
     Index(IndexArgs),
     /// Transcode audio files to AAC format
-    TranscodeAac(TranscodeArgs),
+    TranscodeAac(TranscodeAacArgs),
     /// Transcode audio files to AAC format at 256kbps
     TranscodeAacCBR(TranscodeArgs),
     /// Transcode audio files to MP3 format
@@ -56,6 +56,31 @@ struct TranscodeArgs {
     #[arg(short, long)]
     dry_run: bool,
     paths: Vec<String>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum AacCliBitrateMode {
+    Vbr,
+    Cbr,
+}
+
+impl From<AacCliBitrateMode> for AacBitrateMode {
+    fn from(mode: AacCliBitrateMode) -> Self {
+        match mode {
+            AacCliBitrateMode::Vbr => AacBitrateMode::Vbr,
+            AacCliBitrateMode::Cbr => AacBitrateMode::Cbr,
+        }
+    }
+}
+
+#[derive(Args)]
+struct TranscodeAacArgs {
+    #[command(flatten)]
+    shared: TranscodeArgs,
+    #[arg(short, long, default_value_t = 128, value_name = "KBPS")]
+    bitrate: u32,
+    #[arg(long, value_enum, default_value = "vbr")]
+    mode: AacCliBitrateMode,
 }
 
 #[derive(Args)]
@@ -106,10 +131,22 @@ fn main() {
             index::index_directory(&args.path, args.dry_run, args.force);
         }
         Commands::TranscodeAac(args) => {
-            transcode(args, TranscodeFormat::Aac);
+            transcode(
+                &args.shared,
+                TranscodeFormat::Aac {
+                    mode: args.mode.into(),
+                    bitrate_kbps: args.bitrate,
+                },
+            );
         }
         Commands::TranscodeAacCBR(args) => {
-            transcode(args, TranscodeFormat::AacCbr);
+            transcode(
+                args,
+                TranscodeFormat::Aac {
+                    mode: AacBitrateMode::Cbr,
+                    bitrate_kbps: 256,
+                },
+            );
         }
         Commands::TranscodeMp3(args) => {
             transcode(args, TranscodeFormat::Mp3);
@@ -121,6 +158,49 @@ fn main() {
                     bitrate_kbps: args.bitrate,
                 },
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transcode_aac_accepts_bitrate_and_mode() {
+        let cli = Cli::try_parse_from([
+            "loot",
+            "transcode-aac",
+            "--bitrate",
+            "192",
+            "--mode",
+            "cbr",
+            "src",
+            "dest",
+        ])
+        .expect("expected transcode-aac args to parse");
+
+        match cli.command {
+            Commands::TranscodeAac(args) => {
+                assert_eq!(args.bitrate, 192);
+                assert_eq!(args.mode, AacCliBitrateMode::Cbr);
+                assert_eq!(args.shared.paths, vec!["src".to_owned(), "dest".to_owned()]);
+            }
+            _ => panic!("expected transcode-aac command"),
+        }
+    }
+
+    #[test]
+    fn transcode_aac_defaults_to_vbr_128() {
+        let cli = Cli::try_parse_from(["loot", "transcode-aac", "src", "dest"])
+            .expect("expected transcode-aac args to parse");
+
+        match cli.command {
+            Commands::TranscodeAac(args) => {
+                assert_eq!(args.bitrate, 128);
+                assert_eq!(args.mode, AacCliBitrateMode::Vbr);
+            }
+            _ => panic!("expected transcode-aac command"),
         }
     }
 }

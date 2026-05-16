@@ -77,10 +77,12 @@ Transcode audio files to AAC format (`.m4a`).
 **Usage:**
 
 ```
-loot transcode-aac [--dry-run] <source1> <source2> ... <destination>
+loot transcode-aac [--dry-run] [--bitrate <KBPS>] [--mode <vbr|cbr>] <source1> <source2> ... <destination>
 ```
 
 - `--dry-run`, `-d`: Show what would be transcoded, but do not write files.
+- `--bitrate`, `-b`: Target AAC bitrate in kbps (defaults to `128`).
+- `--mode`: AAC bitrate mode, either `vbr` or `cbr` (defaults to `vbr`).
 - `<source1> <source2> ...`: One or more source directories (must be at least one).
 - `<destination>`: Destination directory for transcoded files.
 
@@ -88,6 +90,7 @@ loot transcode-aac [--dry-run] <source1> <source2> ... <destination>
 
 ```
 loot transcode-aac ~/Music/Originals ~/Music/AAC
+loot transcode-aac --bitrate 256 --mode cbr ~/Music/Originals ~/Music/AAC
 ```
 
 ---

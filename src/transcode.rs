@@ -13,17 +13,25 @@ use std::sync::Arc;
 /// Supported lossy output formats for the transcode workflow.
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
-    Aac,
-    AacCbr,
-    Opus { bitrate_kbps: u32 },
+    Aac {
+        mode: AacBitrateMode,
+        bitrate_kbps: u32,
+    },
+    Opus {
+        bitrate_kbps: u32,
+    },
     Mp3,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum AacBitrateMode {
+    Vbr,
+    Cbr,
 }
 
 fn target_path(dest_path: &Path, relative: &Path, format: TranscodeFormat) -> PathBuf {
     match format {
-        TranscodeFormat::Aac | TranscodeFormat::AacCbr => {
-            dest_path.join(relative).with_extension("m4a")
-        }
+        TranscodeFormat::Aac { .. } => dest_path.join(relative).with_extension("m4a"),
         TranscodeFormat::Opus { .. } => dest_path.join(relative).with_extension("opus"),
         TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
     }
@@ -45,6 +53,21 @@ fn round_time(time: SystemTime) -> u128 {
     time.duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or(Duration::from_secs(0))
         .as_millis()
+}
+
+fn aac_encoder_args(mode: AacBitrateMode, bitrate_kbps: u32) -> Vec<String> {
+    let strategy = match mode {
+        AacBitrateMode::Vbr => "3",
+        AacBitrateMode::Cbr => "0",
+    };
+    let bitrate_bps = u64::from(bitrate_kbps) * 1000;
+
+    vec![
+        "-s".to_owned(),
+        strategy.to_owned(),
+        "-b".to_owned(),
+        bitrate_bps.to_string(),
+    ]
 }
 
 fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::io::Result<()> {
@@ -71,35 +94,18 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
-        TranscodeFormat::Aac => std::process::Command::new("afconvert")
-            //        afconvert -d aac -f m4af -s 3 -b 192000 test.flac test.m4a
-            .arg("-d")
-            .arg("aac")
-            .arg("-f")
-            .arg("m4af")
-            .arg("-s")
-            .arg("3")
-            .arg("-ue")
-            .arg("vbrq")
-            // .arg("45") ~ 96
-            .arg("64") // ~ 128
-            .arg(source)
-            .arg(tmp.as_path())
-            .spawn()
-            .expect("failed to execute child"),
-        TranscodeFormat::AacCbr => std::process::Command::new("afconvert")
-            .arg("-d")
-            .arg("aac")
-            .arg("-f")
-            .arg("m4af")
-            .arg("-s")
-            .arg("0")
-            .arg("-b")
-            .arg("256000")
-            .arg(source)
-            .arg(tmp.as_path())
-            .spawn()
-            .expect("failed to execute child"),
+        TranscodeFormat::Aac { mode, bitrate_kbps } => {
+            let mut command = std::process::Command::new("afconvert");
+            command.arg("-d").arg("aac").arg("-f").arg("m4af");
+            for arg in aac_encoder_args(mode, bitrate_kbps) {
+                command.arg(arg);
+            }
+            command
+                .arg(source)
+                .arg(tmp.as_path())
+                .spawn()
+                .expect("failed to execute child")
+        }
         TranscodeFormat::Mp3 => std::process::Command::new("ffmpeg")
             .arg("-y")
             .arg("-loglevel")
@@ -126,8 +132,9 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
     fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
     fs::rename(tmp.as_path(), dest).expect("Error moving file");
     match format {
-        TranscodeFormat::Aac => tag::copy(source, dest, false).expect("Error copying tag"),
-        TranscodeFormat::AacCbr => tag::copy(source, dest, true).expect("Error copying tag"),
+        TranscodeFormat::Aac { mode, .. } => {
+            tag::copy(source, dest, mode == AacBitrateMode::Cbr).expect("Error copying tag")
+        }
         _ => (),
     }
 
@@ -253,7 +260,7 @@ mod tests {
     use std::path::Path;
     use std::time::{Duration, SystemTime};
 
-    use super::{round_time, target_path, TranscodeFormat};
+    use super::{aac_encoder_args, round_time, target_path, AacBitrateMode, TranscodeFormat};
 
     #[test]
     fn target_path_uses_expected_extension_for_each_format() {
@@ -261,11 +268,14 @@ mod tests {
         let relative = Path::new("Artist/Album/track.flac");
 
         assert_eq!(
-            target_path(dest, relative, TranscodeFormat::Aac),
-            dest.join("Artist/Album/track.m4a")
-        );
-        assert_eq!(
-            target_path(dest, relative, TranscodeFormat::AacCbr),
+            target_path(
+                dest,
+                relative,
+                TranscodeFormat::Aac {
+                    mode: AacBitrateMode::Vbr,
+                    bitrate_kbps: 128
+                }
+            ),
             dest.join("Artist/Album/track.m4a")
         );
         assert_eq!(
@@ -282,5 +292,27 @@ mod tests {
     fn round_time_returns_epoch_milliseconds() {
         let time = SystemTime::UNIX_EPOCH + Duration::from_millis(1234);
         assert_eq!(round_time(time), 1234);
+    }
+
+    #[test]
+    fn aac_encoder_args_set_strategy_and_bits_per_second() {
+        assert_eq!(
+            aac_encoder_args(AacBitrateMode::Vbr, 128),
+            vec![
+                "-s".to_owned(),
+                "3".to_owned(),
+                "-b".to_owned(),
+                "128000".to_owned()
+            ]
+        );
+        assert_eq!(
+            aac_encoder_args(AacBitrateMode::Cbr, 256),
+            vec![
+                "-s".to_owned(),
+                "0".to_owned(),
+                "-b".to_owned(),
+                "256000".to_owned()
+            ]
+        );
     }
 }
