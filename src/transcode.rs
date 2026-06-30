@@ -10,7 +10,9 @@ use crate::tag;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
 
-/// Supported lossy output formats for the transcode workflow.
+pub(crate) const SOURCE_EXTENSIONS: &[&str] = &["flac", "opus", "m4a"];
+
+/// Supported output formats for the transcode workflow.
 #[derive(Copy, Clone)]
 pub enum TranscodeFormat {
     Aac {
@@ -21,6 +23,7 @@ pub enum TranscodeFormat {
         bitrate_kbps: u32,
     },
     Mp3,
+    Flac,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -34,6 +37,7 @@ fn target_path(dest_path: &Path, relative: &Path, format: TranscodeFormat) -> Pa
         TranscodeFormat::Aac { .. } => dest_path.join(relative).with_extension("m4a"),
         TranscodeFormat::Opus { .. } => dest_path.join(relative).with_extension("opus"),
         TranscodeFormat::Mp3 => dest_path.join(relative).with_extension("mp3"),
+        TranscodeFormat::Flac => dest_path.join(relative).with_extension("flac"),
     }
 }
 
@@ -127,6 +131,25 @@ fn transcode_file(source: &Path, dest: &Path, format: TranscodeFormat) -> std::i
             .arg(tmp.as_path())
             .spawn()
             .expect("failed to execute child"),
+        TranscodeFormat::Flac => std::process::Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-loglevel")
+            .arg("quiet")
+            .arg("-i")
+            .arg(source)
+            .arg("-map_metadata")
+            .arg("0")
+            .arg("-map")
+            .arg("0")
+            .arg("-map")
+            .arg("-0:1")
+            .arg("-c:a")
+            .arg("flac")
+            .arg("-f")
+            .arg("flac")
+            .arg(tmp.as_path())
+            .spawn()
+            .expect("failed to execute child"),
     };
     child.wait_with_output().expect("failed to wait on child");
     fs::create_dir_all(dest.parent().unwrap()).expect("Error making dest dir");
@@ -175,7 +198,7 @@ pub fn transcode(source_paths: &[String], dest_dir: &str, dry_run: bool, format:
 
     let dest_path = Path::new(dest_dir);
     for canonical_path in canonicals {
-        let pattern = glob_pattern(&canonical_path, &["flac", "opus"]);
+        let pattern = glob_pattern(&canonical_path, SOURCE_EXTENSIONS);
         let mut matches = globwalk::glob(&pattern)
             .expect("glob error")
             .filter_map(Result::ok)
@@ -260,6 +283,9 @@ mod tests {
     use std::path::Path;
     use std::time::{Duration, SystemTime};
 
+    use crate::fs_utils::glob_pattern;
+
+    use super::SOURCE_EXTENSIONS;
     use super::{aac_encoder_args, round_time, target_path, AacBitrateMode, TranscodeFormat};
 
     #[test]
@@ -285,6 +311,18 @@ mod tests {
         assert_eq!(
             target_path(dest, relative, TranscodeFormat::Mp3),
             dest.join("Artist/Album/track.mp3")
+        );
+        assert_eq!(
+            target_path(dest, relative, TranscodeFormat::Flac),
+            dest.join("Artist/Album/track.flac")
+        );
+    }
+
+    #[test]
+    fn source_extensions_include_apple_lossless_m4a() {
+        assert_eq!(
+            glob_pattern(Path::new("/tmp/music"), SOURCE_EXTENSIONS),
+            "/tmp/music/**/*.{flac,opus,m4a}"
         );
     }
 

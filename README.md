@@ -74,6 +74,8 @@ loot index ~/Music/Library
 
 Transcode audio files to AAC format (`.m4a`).
 
+Transcode commands process source files with `.flac`, `.opus`, and Apple Lossless `.m4a` extensions.
+
 **Usage:**
 
 ```
@@ -136,4 +138,26 @@ loot transcode-opus [--dry-run] [--bitrate <KBPS>] <source1> <source2> ... <dest
 
 ```
 loot transcode-opus ~/Music/Originals ~/Music/Opus
+```
+
+---
+
+### transcode-flac
+
+Transcode audio files to FLAC format.
+
+**Usage:**
+
+```
+loot transcode-flac [--dry-run] <source1> <source2> ... <destination>
+```
+
+- `--dry-run`, `-d`: Show what would be transcoded, but do not write files.
+- `<source1> <source2> ...`: One or more source directories (must be at least one).
+- `<destination>`: Destination directory for transcoded files.
+
+**Example:**
+
+```
+loot transcode-flac ~/Music/Originals ~/Music/FLAC
 ```

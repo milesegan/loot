@@ -1,17 +1,18 @@
 use std::path::Path;
 
 use crate::fs_utils::{canonicalize_path, glob_pattern};
+use crate::transcode::SOURCE_EXTENSIONS;
 
 fn has_source_counterpart(source_dirs: &[String], relative: &Path) -> bool {
     source_dirs.iter().any(|source_dir| {
-        Path::new(source_dir)
-            .join(relative)
-            .with_extension("flac")
-            .exists()
+        let source_path = Path::new(source_dir).join(relative);
+        SOURCE_EXTENSIONS
+            .iter()
+            .any(|extension| source_path.with_extension(extension).exists())
     })
 }
 
-/// Removes transcoded files from the destination when the source FLAC no longer exists.
+/// Removes transcoded files from the destination when the source file no longer exists.
 pub fn prune(source_dirs: &[String], dest_dir: &str, dry_run: bool) {
     let canonical = canonicalize_path(dest_dir);
     let canonical_string = canonical.to_str().expect("Invalid path.");
@@ -61,7 +62,20 @@ mod tests {
     }
 
     #[test]
-    fn returns_false_when_no_source_flac_exists() {
+    fn detects_existing_m4a_source_counterpart() {
+        let source = tempdir().expect("tempdir");
+        let relative = Path::new("Artist/Album/track.mp3");
+        let m4a_path = source.path().join(relative).with_extension("m4a");
+        fs::create_dir_all(m4a_path.parent().expect("parent")).expect("mkdirs");
+        fs::write(&m4a_path, b"audio").expect("write");
+
+        let sources = vec![source.path().to_string_lossy().into_owned()];
+
+        assert!(has_source_counterpart(&sources, relative));
+    }
+
+    #[test]
+    fn returns_false_when_no_source_file_exists() {
         let source = tempdir().expect("tempdir");
         let sources = vec![source.path().to_string_lossy().into_owned()];
 

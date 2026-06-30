@@ -35,6 +35,8 @@ enum Commands {
     TranscodeMp3(TranscodeArgs),
     /// Transcode audio files to Opus format
     TranscodeOpus(TranscodeOpusArgs),
+    /// Transcode audio files to FLAC format
+    TranscodeFlac(TranscodeArgs),
 }
 
 #[derive(Args)]
@@ -159,6 +161,9 @@ fn main() {
                 },
             );
         }
+        Commands::TranscodeFlac(args) => {
+            transcode(args, TranscodeFormat::Flac);
+        }
     }
 }
 
@@ -201,6 +206,20 @@ mod tests {
                 assert_eq!(args.mode, AacCliBitrateMode::Vbr);
             }
             _ => panic!("expected transcode-aac command"),
+        }
+    }
+
+    #[test]
+    fn transcode_flac_accepts_shared_args() {
+        let cli = Cli::try_parse_from(["loot", "transcode-flac", "--dry-run", "src", "dest"])
+            .expect("expected transcode-flac args to parse");
+
+        match cli.command {
+            Commands::TranscodeFlac(args) => {
+                assert!(args.dry_run);
+                assert_eq!(args.paths, vec!["src".to_owned(), "dest".to_owned()]);
+            }
+            _ => panic!("expected transcode-flac command"),
         }
     }
 }
