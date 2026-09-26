@@ -1,4 +1,4 @@
-use lofty::error::LoftyError;
+use lofty::error::FileParseError;
 
 /// Errors shared across metadata and file operations in the CLI.
 #[derive(Debug)]
@@ -28,8 +28,8 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-impl From<LoftyError> for AppError {
-    fn from(_err: LoftyError) -> AppError {
+impl From<FileParseError> for AppError {
+    fn from(_err: FileParseError) -> AppError {
         AppError::ReadTagError
     }
 }
