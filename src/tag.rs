@@ -21,7 +21,12 @@ pub fn read(path: &Path, read_cover: bool) -> Result<Tag> {
 
 /// Copies supported tag fields from `src` into an already-created destination file.
 pub fn copy(src: &Path, dest: &Path, copy_cover: bool) -> Result<()> {
-    let src_tag = read(src, copy_cover)?;
+    let src_tag = match read(src, copy_cover) {
+        Ok(tag) => tag,
+        // An untagged source has nothing to copy.
+        Err(AppError::ReadTagError) => return Ok(()),
+        Err(e) => return Err(e),
+    };
 
     let mut dest_file = Probe::open(&dest)?.read()?;
     let dest_tag = dest_file.primary_tag_mut().ok_or(AppError::WriteTagError)?;

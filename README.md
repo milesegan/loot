@@ -79,12 +79,13 @@ Transcode commands process source files with `.flac`, `.opus`, and Apple Lossles
 **Usage:**
 
 ```
-loot transcode-aac [--dry-run] [--bitrate <KBPS>] [--mode <vbr|cbr>] <source1> <source2> ... <destination>
+loot transcode-aac [--dry-run] [--mode <vbr|cbr>] [--quality <0-127>] [--bitrate <KBPS>] <source1> <source2> ... <destination>
 ```
 
 - `--dry-run`, `-d`: Show what would be transcoded, but do not write files.
-- `--bitrate`, `-b`: Target AAC bitrate in kbps (defaults to `128`).
-- `--mode`: AAC bitrate mode, either `vbr` or `cbr` (defaults to `vbr`).
+- `--mode`: AAC bitrate mode, either `vbr` (true VBR) or `cbr` (defaults to `vbr`).
+- `--quality`, `-q`: True VBR quality, `0`-`127` (vbr only; defaults to `63`, roughly 128 kbps for stereo music). The encoder uses 15 steps: 0, 9, 18, 27, 36, 45, 54, 63, 73, 82, 91, 100, 109, 118, 127.
+- `--bitrate`, `-b`: Bitrate in kbps, `64`-`320` (cbr only; defaults to `128`).
 - `<source1> <source2> ...`: One or more source directories (must be at least one).
 - `<destination>`: Destination directory for transcoded files.
 
@@ -92,7 +93,8 @@ loot transcode-aac [--dry-run] [--bitrate <KBPS>] [--mode <vbr|cbr>] <source1> <
 
 ```
 loot transcode-aac ~/Music/Originals ~/Music/AAC
-loot transcode-aac --bitrate 256 --mode cbr ~/Music/Originals ~/Music/AAC
+loot transcode-aac --quality 91 ~/Music/Originals ~/Music/AAC
+loot transcode-aac --mode cbr --bitrate 256 ~/Music/Originals ~/Music/AAC
 ```
 
 ---
@@ -130,7 +132,7 @@ loot transcode-opus [--dry-run] [--bitrate <KBPS>] <source1> <source2> ... <dest
 ```
 
 - `--dry-run`, `-d`: Show what would be transcoded, but do not write files.
-- `--bitrate`, `-b`: Target Opus bitrate in kbps (defaults to `128`).
+- `--bitrate`, `-b`: Target Opus bitrate in kbps (defaults to the native Opus encoder bitrate).
 - `<source1> <source2> ...`: One or more source directories (must be at least one).
 - `<destination>`: Destination directory for transcoded files.
 
